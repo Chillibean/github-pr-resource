@@ -38,6 +38,7 @@ Make sure to check out [#migrating](#migrating) to learn more.
 | `disable_git_lfs`           | No       | `true`                           | Disable Git LFS, skipping an attempt to convert pointers of files tracked into their corresponding objects when checked out into a working copy.                                                                                                                                           |
 | `states`                    | No       | `["OPEN", "MERGED"]`             | The PR states to select (`OPEN`, `MERGED` or `CLOSED`). The pipeline will only trigger on pull requests matching one of the specified states. Default is ["OPEN"].                                                                                                                         |
 | `status_context`            | No       | `concourse-ci/build`             | Filter out PRs that contain the status context on their latest SHA |
+| `verbose`                   | No       | `true`                           | Show more information during `check` about PR filtering |
 
 Notes:
  - If `v3_endpoint` is set, `v4_endpoint` must also be set (and the other way around).

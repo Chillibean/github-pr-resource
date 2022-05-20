@@ -3,6 +3,7 @@ package resource
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -28,6 +29,7 @@ type Source struct {
 	Labels                  []string                    `json:"labels"`
 	States                  []githubv4.PullRequestState `json:"states"`
 	StatusContext           string                      `json:"status_context"`
+	Verbose                 bool                        `json:"verbose"`
 }
 
 // Validate the source configuration.
@@ -52,6 +54,9 @@ func (s *Source) Validate() error {
 		default:
 			return errors.New(fmt.Sprintf("states value \"%s\" must be one of: OPEN, MERGED, CLOSED", state))
 		}
+	}
+	if s.Verbose {
+		os.Setenv("verbose", "true")
 	}
 	return nil
 }

@@ -12,10 +12,10 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-func LogSkipped(p *PullRequest, name string, add []string) {
+func LogSkipped(p *PullRequest, name string, additional []string) {
 	PrintLog(fmt.Sprintf("%d skipped, reason: %s", p.Number, name))
 	
-	for _, a := range add {
+	for _, a := range additional {
 		PrintLog(a)
 	}
 }
@@ -28,9 +28,6 @@ func PrintLog(msg string) {
 
 // Check (business logic)
 func Check(request CheckRequest, manager Github) (CheckResponse, error) {
-	//TODO move to input parameters
-	os.Setenv("verbose", "true")
-
 	var response CheckResponse
 
 	// Filter out pull request if it does not have a filtered state
