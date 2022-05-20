@@ -46,6 +46,7 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 
 	disableSkipCI := request.Source.DisableCISkip
 
+	PrintLog(fmt.Sprint("request.Version:", request.Version))
 Loop:
 	for _, p := range pulls {
 		PrintLog("\n")
