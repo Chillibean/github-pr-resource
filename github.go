@@ -101,6 +101,9 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
 func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([]*PullRequest, error) {
+	maxAttempts := 4
+	delayBetweenPages := 500
+
 	var query struct {
 		Repository struct {
 			PullRequests struct {
@@ -151,8 +154,19 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 
 	var response []*PullRequest
 	for {
-		if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
-			return nil, err
+		attempt := 1
+		for { 
+			if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
+				if attempt <= maxAttempts {
+					log.Printf("Attempt %d of %d failed, retrying", attempt, maxAttempts)
+					log.Printf("check failed: %s", err)
+					attempt++
+				} else {
+					return nil, err
+				}
+			} else {
+				break
+			}
 		}
 		for _, p := range query.Repository.PullRequests.Edges {
 			labels := make([]LabelObject, len(p.Node.Labels.Edges))
@@ -174,6 +188,9 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 			break
 		}
 		vars["prCursor"] = query.Repository.PullRequests.PageInfo.EndCursor
+
+		// Sleep - github API does not like fast querying
+		time.Sleep(time.Duration(delayBetweenPages) * time.Millisecond)
 	}
 	return response, nil
 }
