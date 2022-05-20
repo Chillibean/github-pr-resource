@@ -2,6 +2,8 @@ package resource
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -10,8 +12,25 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
+func LogSkipped(p *PullRequest, name string, add []string) {
+	PrintLog(fmt.Sprintf("%d skipped, reason: %s", p.Number, name))
+	
+	for _, a := range add {
+		PrintLog(a)
+	}
+}
+
+func PrintLog(msg string) {
+	if os.Getenv("verbose") == "true" {
+		log.Print(msg)
+	}
+}
+
 // Check (business logic)
 func Check(request CheckRequest, manager Github) (CheckResponse, error) {
+	//TODO move to input parameters
+	os.Setenv("verbose", "true")
+
 	var response CheckResponse
 
 	// Filter out pull request if it does not have a filtered state
@@ -29,28 +48,49 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 
 Loop:
 	for _, p := range pulls {
+		PrintLog("\n")
+		PrintLog(fmt.Sprint("PR:", p.Number))
+		PrintLog(fmt.Sprint("commit:", p.Tip.OID))
+
 		// [ci skip]/[skip ci] in Pull request title
 		if !disableSkipCI && ContainsSkipCI(p.Title) {
+			LogSkipped(p, "[ci skip]/[skip ci] in Pull request title", []string{
+				fmt.Sprint("disableSkipCI:", disableSkipCI),
+				fmt.Sprint("p.Title:", p.Title)})
 			continue
 		}
 
 		// [ci skip]/[skip ci] in Commit message
 		if !disableSkipCI && ContainsSkipCI(p.Tip.Message) {
+			LogSkipped(p, "ci skip]/[skip ci] in Commit message",[]string{
+				fmt.Sprint("disableSkipCI:", disableSkipCI),
+				fmt.Sprint("p.Tip.Message:", p.Tip.Message)})
 			continue
 		}
 
 		// Filter pull request if the BaseBranch does not match the one specified in source
 		if request.Source.BaseBranch != "" && p.PullRequestObject.BaseRefName != request.Source.BaseBranch {
+			LogSkipped(p, "Filtr pull request if the BaseBranch does not match the one specified in source", []string{
+				fmt.Sprint("request.Source.BaseBranch:", request.Source.BaseBranch),
+				fmt.Sprint("p.PullRequestObject.BaseRefName:", p.PullRequestObject.BaseRefName)})
 			continue
 		}
 
 		// Filter out commits that are too old.
 		if request.Source.StatusContext == "" && !p.Tip.CommittedDate.Time.After(request.Version.CommittedDate) {
+			LogSkipped(p, "Filter out commits that are too old.", []string{
+				fmt.Sprint("request.Source.StatusContext:", request.Source.StatusContext),
+				fmt.Sprint("p.Tip.CommittedDate.Time:", p.Tip.CommittedDate.Time),
+				fmt.Sprint("request.Version.CommittedDate:", request.Version.CommittedDate),
+			})
 			continue
 		}
 
 		// Filter out commits that already have a build status
 		if request.Source.StatusContext != "" && p.HasStatus {
+			LogSkipped(p, "Filter out commits that already have a build status", []string{
+				fmt.Sprint("request.Source.StatusContext:", request.Source.StatusContext), 
+				fmt.Sprint("p.HasStatus:", p.HasStatus)})
 			continue
 		}
 
@@ -69,22 +109,34 @@ Loop:
 			}
 
 			if !labelFound {
+				LogSkipped(p, "Filter out pull request if it does not contain at least one of the desired labels", []string{
+					fmt.Sprint("request.Source.Labels:", request.Source.Labels),
+					fmt.Sprint("p.Labels:", p.Labels)})
 				continue Loop
 			}
 		}
 
 		// Filter out forks.
 		if request.Source.DisableForks && p.IsCrossRepository {
+			LogSkipped(p, "Filter out forks.", []string{
+				fmt.Sprint("request.Source.DisableForks:", request.Source.DisableForks),
+				fmt.Sprint("p.IsCrossRepository:", p.IsCrossRepository)})
 			continue
 		}
 
 		// Filter out drafts.
 		if request.Source.IgnoreDrafts && p.IsDraft {
+			LogSkipped(p, "Filter out drafts.", []string{
+				fmt.Sprint("request.Source.IgnoreDrafts:", request.Source.IgnoreDrafts),
+				fmt.Sprint("p.IsDraft:", p.IsDraft)})
 			continue
 		}
 
 		// Filter pull request if it does not have the required number of approved review(s).
 		if p.ApprovedReviewCount < request.Source.RequiredReviewApprovals {
+			LogSkipped(p, "Filter pull request if it does not have the required number of approved review(s).", []string{
+				fmt.Sprint("p.ApprovedReviewCount:", p.ApprovedReviewCount ),
+				fmt.Sprint("request.Source.RequiredReviewApprovals:", request.Source.RequiredReviewApprovals)})
 			continue
 		}
 
@@ -109,6 +161,9 @@ Loop:
 				wanted = append(wanted, w...)
 			}
 			if len(wanted) == 0 {
+				LogSkipped(p, "Skip version if no files match the specified paths.", []string{
+					fmt.Sprint("request.Source.Paths:", request.Source.Paths),
+					fmt.Sprint("wanted:", wanted)})
 				continue Loop
 			}
 		}
@@ -123,14 +178,21 @@ Loop:
 				}
 			}
 			if len(wanted) == 0 {
+				LogSkipped(p, "Skip version if all files are ignored.", []string{
+					fmt.Sprint("request.Source.IgnorePaths:", request.Source.IgnorePaths),
+					fmt.Sprint("wanted:", wanted)})
 				continue Loop
 			}
 		}
 		response = append(response, NewVersion(p))
+
+		PrintLog("not skipped")
 	}
 
 	// Sort the commits by date
 	sort.Sort(response)
+
+	PrintLog(fmt.Sprint("response length before filter:", len(response)))
 
 	// If there are no new but an old version = return the old
 	if len(response) == 0 && request.Version.PR != "" {
@@ -140,6 +202,9 @@ Loop:
 	if len(response) != 0 && request.Version.PR == "" {
 		response = CheckResponse{response[len(response)-1]}
 	}
+
+	PrintLog(fmt.Sprint("response length after filter:", len(response)))
+
 	return response, nil
 }
 
