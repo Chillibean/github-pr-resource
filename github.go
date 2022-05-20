@@ -105,6 +105,8 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([]*PullRequest, error) {
 	maxAttempts := 4
 	delayBetweenPages := 500
+	maxPRs := 200
+	perPage := 50
 
 	var query struct {
 		Repository struct {
@@ -155,7 +157,15 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 	}
 
 	var response []*PullRequest
+
+	
+	log.Printf("Retrieving last %d PRs (%d per page)", maxPRs, perPage)
+	maxPages := maxPRs / perPage
+	page := 0
+
 	for {
+		page++
+		log.Printf("Page %d of %d", page, maxPages)
 		attempt := 1
 		for { 
 			if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
@@ -186,7 +196,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 				})
 			}
 		}
-		if !query.Repository.PullRequests.PageInfo.HasNextPage {
+		if !query.Repository.PullRequests.PageInfo.HasNextPage || page >= maxPages {
 			break
 		}
 		vars["prCursor"] = query.Repository.PullRequests.PageInfo.EndCursor
