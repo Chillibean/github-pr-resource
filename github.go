@@ -107,6 +107,8 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 	delayBetweenPages := 500
 	maxPRs := 200
 	perPage := 50
+	orderField := "UPDATED_AT"
+	orderDirection := "DESC"
 
 	var query struct {
 		Repository struct {
@@ -140,7 +142,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 					EndCursor   githubv4.String
 					HasNextPage bool
 				}
-			} `graphql:"pullRequests(first:$prFirst,states:$prStates,after:$prCursor)"`
+			} `graphql:"pullRequests(first:$prFirst,states:$prStates,after:$prCursor,orderBy:{field:$orderField,direction:$orderDirection})"`
 		} `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
 	}
 
@@ -151,6 +153,8 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 		"prFirst":           githubv4.Int(100),
 		"prStates":          prStates,
 		"prCursor":          (*githubv4.String)(nil),
+		"orderField":        githubv4.IssueOrderField(orderField),
+		"orderDirection":    githubv4.OrderDirection(orderDirection),
 		"commitsLast":       githubv4.Int(1),
 		"prReviewStates":    []githubv4.PullRequestReviewState{githubv4.PullRequestReviewStateApproved},
 		"labelsFirst":       githubv4.Int(10),
