@@ -2,7 +2,8 @@ version: '2'
 
 vars:
   BUILD_DIR: build
-  DOCKER_REPO: teliaoss/github-pr-resource
+  DOCKER_REPO: chillibean/github-pr-resource
+  DOCKER_TAG: v1.1
 
 tasks:
   default:
@@ -37,12 +38,22 @@ tasks:
   docker:
     desc: Build docker image under dev tag.
     cmds:
-    - docker build -t {{.DOCKER_REPO}}:dev .
+    - docker build -t {{.DOCKER_REPO}}:{{.DOCKER_TAG}} .
 
   build:
     desc: Build check/in/out artifacts
     cmds:
     - task: test
+    - task: go-build
+      vars: {BINARY: check}
+    - task: go-build
+      vars: {BINARY: in}
+    - task: go-build
+      vars: {BINARY: out}
+
+  build_dev:
+    desc: Build check/in/out artifacts without tests
+    cmds:
     - task: go-build
       vars: {BINARY: check}
     - task: go-build
