@@ -1,0 +1,27 @@
+version: "3"
+services:
+  source:
+    container_name: github-pr-resource_source
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev_source
+    volumes:
+      - ./:/pr
+      - bins:/pr/build
+    working_dir: /pr
+    command: tail -f /dev/null
+  
+  exec:
+    container_name: github-pr-resource_exec
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev_exec
+    volumes:
+      - bins:/opt/resource
+    working_dir: /opt/resource
+    command: tail -f /dev/null
+  
+volumes:
+  bins:
