@@ -29,6 +29,7 @@ type Source struct {
   States                  []githubv4.PullRequestState `json:"states"`
   StatusContext           string                      `json:"status_context"`
   PageSize                int                         `json:"page_size"`
+  MaxPRs                  int                         `json:"max_prs"`
 }
 
 // Validate the source configuration.

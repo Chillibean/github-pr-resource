@@ -22,7 +22,7 @@ import (
 // Github for testing purposes.
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_github.go . Github
 type Github interface {
-  ListPullRequests([]githubv4.PullRequestState, int) ([]*PullRequest, error)
+  ListPullRequests([]githubv4.PullRequestState, int, int) ([]*PullRequest, error)
   ListModifiedFiles(int) ([]string, error)
   PostComment(string, string) error
   GetPullRequest(string, string) (*PullRequest, error)
@@ -38,7 +38,6 @@ type GithubClient struct {
   Repository    string
   Owner         string
   StatusContext string
-  PageSize      int
 }
 
 // NewGithubClient ...
@@ -103,20 +102,29 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 }
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
-func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, PageSize int) ([]*PullRequest, error) {
+func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, perPage int, maxPRs int) ([]*PullRequest, error) {
 
-  if PageSize == 0 {
-    log.Printf("No page_size specified, using default page_size 50")
-    PageSize = 50
-  } else if PageSize > 200 {
-    log.Printf("Max page_size exceeded, using max page_size 200")
-    PageSize = 200
+  if perPage == 0 {
+    log.Printf("No page_size specified, using default value 50")
+    perPage = 50
+  } else if perPage > 200 {
+    log.Printf("Max page_size exceeded, using max value 200")
+    perPage = 200
   }
+
+  if maxPRs == 0 {
+    log.Printf("No max_prs value specified, using default value 200")
+    maxPRs = 200
+  } else if maxPRs > 500 {
+    log.Printf("max max_prs value exceeded, using max value 500")
+    maxPRs = 500
+  }
+
 
   maxAttempts := 4
   delayBetweenPages := 500
-  maxPRs := 200
-  perPage := PageSize
+  // maxPRs := 200
+  // perPage := PageSize
   orderField := "UPDATED_AT"
   orderDirection := "DESC"
 

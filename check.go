@@ -20,7 +20,7 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
     filterStates = request.Source.States
   }
 
-  pulls, err := manager.ListPullRequests(filterStates, request.Source.PageSize)
+  pulls, err := manager.ListPullRequests(filterStates, request.Source.PageSize, request.Source.MaxPRs)
   if err != nil {
     return nil, fmt.Errorf("failed to get last commits: %s", err)
   }
