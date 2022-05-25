@@ -1,6 +1,6 @@
 ## Development
 
-To start run 
+To start run
 ```
 docker-compose up -d
 ```
@@ -32,10 +32,11 @@ example
 ```
 {
     "source": {
-        "repository": "<<repository_name>>", 
-        "access_token": "<<place_your_github_path_here>>", 
-        "status_context": "concourse-ci/status"  
-    } 
+        "page_size": "25",
+        "repository": "<<repository_name>>",
+        "access_token": "<<place_your_github_path_here>>",
+        "status_context": "concourse-ci/status"
+    }
 }
 ```
 

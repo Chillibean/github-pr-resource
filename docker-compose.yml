@@ -11,7 +11,7 @@ services:
       - bins:/pr/build
     working_dir: /pr
     command: tail -f /dev/null
-  
+
   exec:
     container_name: github-pr-resource_exec
     build:
@@ -22,6 +22,6 @@ services:
       - bins:/opt/resource
     working_dir: /opt/resource
     command: tail -f /dev/null
-  
+
 volumes:
   bins:
