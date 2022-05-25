@@ -22,7 +22,7 @@ import (
 // Github for testing purposes.
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_github.go . Github
 type Github interface {
-  ListPullRequests([]githubv4.PullRequestState, int, int) ([]*PullRequest, error)
+  ListPullRequests([]githubv4.PullRequestState, Parameters) ([]*PullRequest, error)
   ListModifiedFiles(int) ([]string, error)
   PostComment(string, string) error
   GetPullRequest(string, string) (*PullRequest, error)
@@ -102,31 +102,46 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 }
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
-func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, perPage int, maxPRs int) ([]*PullRequest, error) {
+func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p Parameters ) ([]*PullRequest, error) {
+  maxAttempts := 4
+  delayBetweenPages := 500
+  maxPRs := p.MaxPRs
+  perPage := p.PageSize
+  orderField := p.SortField
+  orderDirection := p.SortDirection
 
   if perPage == 0 {
-    log.Printf("No page_size specified, using default value 50")
     perPage = 50
-  } else if perPage > 200 {
-    log.Printf("Max page_size exceeded, using max value 200")
+    log.Printf("No page_size specified, using default value 50")
+  } else if p.PageSize > 200 {
     perPage = 200
+    log.Printf("Max page_size exceeded, using max value 200")
   }
 
   if maxPRs == 0 {
-    log.Printf("No max_prs value specified, using default value 200")
     maxPRs = 200
+    log.Printf("No max_prs value specified, using default value 200")
   } else if maxPRs > 500 {
-    log.Printf("max max_prs value exceeded, using max value 500")
     maxPRs = 500
+    log.Printf("max max_prs value exceeded, using max value 500")
   }
 
+  if orderField == "" {
+    orderField = "UPDATED_AT"
+    log.Printf("sort_field not specified, using default value 'UPDATED_AT'")
+  } else {
+    orderField = p.SortField
+  }
 
-  maxAttempts := 4
-  delayBetweenPages := 500
-  // maxPRs := 200
-  // perPage := PageSize
-  orderField := "UPDATED_AT"
-  orderDirection := "DESC"
+  if orderDirection == "" {
+    orderDirection = "DESC"
+    log.Printf("sort_direction not specified, using default value 'DESC'")
+  } else if (orderDirection != "DESC" || orderDirection != "ASC") {
+    orderDirection = "DESC"
+    log.Printf("sort_direction not valid, valid options are 'DESC' or 'ASC', using default value 'DESC'")
+  } else {
+    orderDirection = p.SortDirection
+  }
 
   var query struct {
     Repository struct {

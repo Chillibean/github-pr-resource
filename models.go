@@ -30,6 +30,8 @@ type Source struct {
   StatusContext           string                      `json:"status_context"`
   PageSize                int                         `json:"page_size"`
   MaxPRs                  int                         `json:"max_prs"`
+  SortField               string                      `json:"sort_field"`
+  SortDirection           string                      `json:"sort_direction"`
 }
 
 // Validate the source configuration.
@@ -167,3 +169,12 @@ type ChangedFileObject struct {
 type LabelObject struct {
   Name string
 }
+
+// Parameters represents settings for request parameters
+type Parameters struct {
+  PageSize                int                         `json:"page_size"`
+  MaxPRs                  int                         `json:"max_prs"`
+  SortField               string                      `json:"sort_field"`
+  SortDirection           string                      `json:"sort_direction"`
+}
+
