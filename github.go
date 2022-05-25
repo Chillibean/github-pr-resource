@@ -103,8 +103,8 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
 func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p Parameters ) ([]*PullRequest, error) {
-  maxAttempts := 4
-  delayBetweenPages := 500
+  maxAttempts := p.MaxRetries
+  delayBetweenPages := p.DelayBetweenPages
   maxPRs := p.MaxPRs
   perPage := p.PageSize
   orderField := p.SortField
@@ -126,11 +126,25 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
     log.Printf("max max_prs value exceeded, using max value 500")
   }
 
+  if maxAttempts == 0 {
+    maxAttempts = 4
+    log.Printf("No max_retries value specified, using default value 4")
+  } else if maxAttempts > 10 {
+    maxAttempts = 10
+    log.Printf("max max_retries value exceeded, using max value 10")
+  }
+
+  if delayBetweenPages == 0 {
+    delayBetweenPages = 500
+    log.Printf("No delay_between_pages value specified, using default value 500ms")
+  } else if delayBetweenPages > 10000 {
+    delayBetweenPages = 10000
+    log.Printf("max delay_between_pages value exceeded, using max value 10,000ms")
+  }
+
   if orderField == "" {
     orderField = "UPDATED_AT"
     log.Printf("sort_field not specified, using default value 'UPDATED_AT'")
-  } else {
-    orderField = p.SortField
   }
 
   if orderDirection == "" {

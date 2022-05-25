@@ -176,5 +176,7 @@ type Parameters struct {
   MaxPRs                  int                         `json:"max_prs"`
   SortField               string                      `json:"sort_field"`
   SortDirection           string                      `json:"sort_direction"`
+  MaxRetries              int                         `json:"max_retries"`
+  DelayBetweenPages       int                         `json:"delay_between_pages"`
 }
 
