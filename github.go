@@ -104,6 +104,15 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
 func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, PageSize int) ([]*PullRequest, error) {
+
+  if PageSize == 0 {
+    log.Printf("No page_size specified, using default page_size 50")
+    PageSize = 50
+  } else if PageSize > 200 {
+    log.Printf("Max page_size exceeded, using max page_size 200")
+    PageSize = 200
+  }
+
   maxAttempts := 4
   delayBetweenPages := 500
   maxPRs := 200
@@ -118,24 +127,24 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, Pa
           Node struct {
             PullRequestObject
             Reviews struct {
-            	TotalCount int
+              TotalCount int
             } `graphql:"reviews(states: $prReviewStates)"`
             Commits struct {
-            	Edges []struct {
-            		Node struct {
-            			Commit struct {
-            				CommitObject
-            				Status StatusObject
-            			}
-            		}
-            	}
+              Edges []struct {
+                Node struct {
+                  Commit struct {
+                    CommitObject
+                    Status StatusObject
+                  }
+                }
+              }
             } `graphql:"commits(last:$commitsLast)"`
             Labels struct {
-            	Edges []struct {
-            		Node struct {
-            			LabelObject
-            		}
-            	}
+              Edges []struct {
+                Node struct {
+                  LabelObject
+                }
+              }
             } `graphql:"labels(first:$labelsFirst)"`
           }
         }
@@ -275,7 +284,7 @@ func (m *GithubClient) GetChangedFiles(prNumber string, commitRef string) ([]Cha
         Files struct {
           Edges []struct {
             Node struct {
-            	ChangedFileObject
+              ChangedFileObject
             }
           } `graphql:"edges"`
           PageInfo struct {
@@ -330,7 +339,7 @@ func (m *GithubClient) GetPullRequest(prNumber, commitRef string) (*PullRequest,
         Commits struct {
           Edges []struct {
             Node struct {
-            	Commit CommitObject
+              Commit CommitObject
             }
           }
         } `graphql:"commits(last:$commitsLast)"`
@@ -413,10 +422,10 @@ func (m *GithubClient) DeletePreviousComments(prNumber string) error {
         Comments struct {
           Edges []struct {
             Node struct {
-            	DatabaseId int64
-            	Author     struct {
-            		Login string
-            	}
+              DatabaseId int64
+              Author     struct {
+                Login string
+              }
             }
           }
         } `graphql:"comments(last:$commentsLast)"`
