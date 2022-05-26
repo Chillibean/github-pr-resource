@@ -116,6 +116,8 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
   } else if p.PageSize > 200 {
     perPage = 200
     log.Printf("Max page_size exceeded, using max value 200")
+  } else {
+    log.Printf("running with page_size: " + strconv.Itoa(perPage))
   }
 
   if maxPRs == 0 {
@@ -147,14 +149,20 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
     log.Printf("sort_field not specified, using default value 'UPDATED_AT'")
   }
 
-  if orderDirection == "" {
+  switch orderDirection {
+  case "DESC":
+    orderDirection = "DESC"
+    log.Printf("running with specified sort_direction: 'DESC'")
+  case "ASC":
+    orderDirection = "ASC"
+    log.Printf("running with specified sort_direction: 'ASC'")
+  case "":
     orderDirection = "DESC"
     log.Printf("sort_direction not specified, using default value 'DESC'")
-  } else if (orderDirection != "DESC" || orderDirection != "ASC") {
+  default:
     orderDirection = "DESC"
-    log.Printf("sort_direction not valid, valid options are 'DESC' or 'ASC', using default value 'DESC'")
-  } else {
-    orderDirection = p.SortDirection
+    log.Printf("sort_direction %s not valid, using default value 'DESC'", orderDirection)
+    log.Printf("running with sort_direction: " + orderDirection)
   }
 
   var query struct {
