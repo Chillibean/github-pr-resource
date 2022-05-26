@@ -142,6 +142,8 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
   } else if delayBetweenPages > 10000 {
     delayBetweenPages = 10000
     log.Printf("max delay_between_pages value exceeded, using max value 10,000ms")
+  } else {
+    log.Printf("running with specified delay_between_pages: %s", strconv.Itoa(delayBetweenPages))
   }
 
   if orderField == "" {
