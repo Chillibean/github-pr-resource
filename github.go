@@ -109,7 +109,6 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
   perPage := p.PageSize
   orderField := p.SortField
   orderDirection := p.SortDirection
-  prFirst := 5
 
   if perPage == 0 {
     perPage = 50
@@ -155,8 +154,6 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
     orderField = "UPDATED_AT"
     log.Printf("sort_field not specified, using default value 'UPDATED_AT'")
   }
-
-
 
   switch orderDirection {
   case "DESC":
@@ -214,7 +211,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
     "repositoryOwner":   githubv4.String(m.Owner),
     "repositoryName":    githubv4.String(m.Repository),
     "statusContextName": githubv4.String(m.StatusContext),
-    "prFirst":           githubv4.Int(100),
+    "prFirst":           githubv4.Int(perPage),
     "prStates":          prStates,
     "prCursor":          (*githubv4.String)(nil),
     "orderField":        githubv4.IssueOrderField(orderField),
