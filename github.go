@@ -1,516 +1,456 @@
 package resource
 
 import (
-  "context"
-  "crypto/tls"
-  "errors"
-  "fmt"
-  "log"
-  "net/http"
-  "net/url"
-  "os"
-  "path"
-  "strconv"
-  "strings"
-  "time"
+	"context"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"strconv"
+	"strings"
+	"time"
 
-  "github.com/google/go-github/v28/github"
-  "github.com/shurcooL/githubv4"
-  "golang.org/x/oauth2"
+	"github.com/google/go-github/v28/github"
+	"github.com/shurcooL/githubv4"
+	"golang.org/x/oauth2"
 )
 
 // Github for testing purposes.
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_github.go . Github
 type Github interface {
-  ListPullRequests([]githubv4.PullRequestState, Parameters) ([]*PullRequest, error)
-  ListModifiedFiles(int) ([]string, error)
-  PostComment(string, string) error
-  GetPullRequest(string, string) (*PullRequest, error)
-  GetChangedFiles(string, string) ([]ChangedFileObject, error)
-  UpdateCommitStatus(string, string, string, string, string, string) error
-  DeletePreviousComments(string) error
+	ListPullRequests([]githubv4.PullRequestState, Parameters) ([]*PullRequest, error)
+	ListModifiedFiles(int) ([]string, error)
+	PostComment(string, string) error
+	GetPullRequest(string, string) (*PullRequest, error)
+	GetChangedFiles(string, string) ([]ChangedFileObject, error)
+	UpdateCommitStatus(string, string, string, string, string, string) error
+	DeletePreviousComments(string) error
 }
 
 // GithubClient for handling requests to the Github V3 and V4 APIs.
 type GithubClient struct {
-  V3            *github.Client
-  V4            *githubv4.Client
-  Repository    string
-  Owner         string
-  StatusContext string
+	V3            *github.Client
+	V4            *githubv4.Client
+	Repository    string
+	Owner         string
+	StatusContext string
 }
 
 // NewGithubClient ...
 func NewGithubClient(s *Source) (*GithubClient, error) {
-  owner, repository, err := parseRepository(s.Repository)
-  if err != nil {
-    return nil, err
-  }
+	owner, repository, err := parseRepository(s.Repository)
+	if err != nil {
+		return nil, err
+	}
 
-  // Skip SSL verification for self-signed certificates
-  // source: https://github.com/google/go-github/pull/598#issuecomment-333039238
-  var ctx context.Context
-  if s.SkipSSLVerification {
-    insecureClient := &http.Client{Transport: &http.Transport{
-      TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-    },
-    }
-    ctx = context.WithValue(context.TODO(), oauth2.HTTPClient, insecureClient)
-  } else {
-    ctx = context.TODO()
-  }
+	// Skip SSL verification for self-signed certificates
+	// source: https://github.com/google/go-github/pull/598#issuecomment-333039238
+	var ctx context.Context
+	if s.SkipSSLVerification {
+		insecureClient := &http.Client{Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		}
+		ctx = context.WithValue(context.TODO(), oauth2.HTTPClient, insecureClient)
+	} else {
+		ctx = context.TODO()
+	}
 
-  client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(
-    &oauth2.Token{AccessToken: s.AccessToken},
-  ))
+	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: s.AccessToken},
+	))
 
-  var v3 *github.Client
-  if s.V3Endpoint != "" {
-    endpoint, err := url.Parse(s.V3Endpoint)
-    if err != nil {
-      return nil, fmt.Errorf("failed to parse v3 endpoint: %s", err)
-    }
-    v3, err = github.NewEnterpriseClient(endpoint.String(), endpoint.String(), client)
-    if err != nil {
-      return nil, err
-    }
-  } else {
-    v3 = github.NewClient(client)
-  }
+	var v3 *github.Client
+	if s.V3Endpoint != "" {
+		endpoint, err := url.Parse(s.V3Endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse v3 endpoint: %s", err)
+		}
+		v3, err = github.NewEnterpriseClient(endpoint.String(), endpoint.String(), client)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		v3 = github.NewClient(client)
+	}
 
-  var v4 *githubv4.Client
-  if s.V4Endpoint != "" {
-    endpoint, err := url.Parse(s.V4Endpoint)
-    if err != nil {
-      return nil, fmt.Errorf("failed to parse v4 endpoint: %s", err)
-    }
-    v4 = githubv4.NewEnterpriseClient(endpoint.String(), client)
-    if err != nil {
-      return nil, err
-    }
-  } else {
-    v4 = githubv4.NewClient(client)
-  }
+	var v4 *githubv4.Client
+	if s.V4Endpoint != "" {
+		endpoint, err := url.Parse(s.V4Endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse v4 endpoint: %s", err)
+		}
+		v4 = githubv4.NewEnterpriseClient(endpoint.String(), client)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		v4 = githubv4.NewClient(client)
+	}
 
-  return &GithubClient{
-    V3:            v3,
-    V4:            v4,
-    Owner:         owner,
-    Repository:    repository,
-    StatusContext: s.StatusContext,
-  }, nil
+	return &GithubClient{
+		V3:            v3,
+		V4:            v4,
+		Owner:         owner,
+		Repository:    repository,
+		StatusContext: s.StatusContext,
+	}, nil
 }
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
-func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p Parameters ) ([]*PullRequest, error) {
-  maxAttempts := p.MaxRetries
-  delayBetweenPages := p.DelayBetweenPages
-  maxPRs := p.MaxPRs
-  perPage := p.PageSize
-  orderField := p.SortField
-  orderDirection := p.SortDirection
+func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p Parameters) ([]*PullRequest, error) {
+	// log.Println("ListPullRequests being run from gtihub.go with parameters below:")
+	// maxAttempts := p.MaxRetries
+	// delayBetweenPages := p.DelayBetweenPages
+	// maxPRs := p.MaxPRs
+	// perPage := p.PageSize
+	// orderField := p.SortField
+	// orderDirection := p.SortDirection
 
-  if perPage == 0 {
-    perPage = 50
-    log.Printf("No page_size specified, using default value 50")
-  } else if p.PageSize > 200 {
-    perPage = 200
-    log.Printf("Max page_size exceeded, using max value 200")
-  } else {
-    log.Printf("running with specified per_page: %s", strconv.Itoa(perPage))
-  }
+	var query struct {
+		Repository struct {
+			PullRequests struct {
+				Edges []struct {
+					Node struct {
+						PullRequestObject
+						Reviews struct {
+							TotalCount int
+						} `graphql:"reviews(states: $prReviewStates)"`
+						Commits struct {
+							Edges []struct {
+								Node struct {
+									Commit struct {
+										CommitObject
+										Status StatusObject
+									}
+								}
+							}
+						} `graphql:"commits(last:$commitsLast)"`
+						Labels struct {
+							Edges []struct {
+								Node struct {
+									LabelObject
+								}
+							}
+						} `graphql:"labels(first:$labelsFirst)"`
+					}
+				}
+				PageInfo struct {
+					EndCursor   githubv4.String
+					HasNextPage bool
+				}
+			} `graphql:"pullRequests(first:$prFirst,states:$prStates,after:$prCursor,orderBy:{field:$orderField,direction:$orderDirection})"`
+		} `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
+	}
 
-  if maxPRs == 0 {
-    maxPRs = 200
-    log.Printf("No max_prs value specified, using default value 200")
-  } else if maxPRs > 500 {
-    maxPRs = 500
-    log.Printf("max max_prs value exceeded, using max value 500")
-  } else {
-    log.Printf("running with specified max_prs: %s", strconv.Itoa(maxPRs))
-  }
+	vars := map[string]interface{}{
+		"repositoryOwner":   githubv4.String(m.Owner),
+		"repositoryName":    githubv4.String(m.Repository),
+		"statusContextName": githubv4.String(m.StatusContext),
+		"prFirst":           githubv4.Int(p.PageSize),
+		"prStates":          prStates,
+		"prCursor":          (*githubv4.String)(nil),
+		"orderField":        githubv4.IssueOrderField(p.SortField),
+		"orderDirection":    githubv4.OrderDirection(p.SortDirection),
+		"commitsLast":       githubv4.Int(1),
+		"prReviewStates":    []githubv4.PullRequestReviewState{githubv4.PullRequestReviewStateApproved},
+		"labelsFirst":       githubv4.Int(10),
+	}
 
-  if maxAttempts == 0 {
-    maxAttempts = 4
-    log.Printf("No max_retries value specified, using default value 4")
-  } else if maxAttempts > 10 {
-    maxAttempts = 10
-    log.Printf("max max_retries value exceeded, using max value 10")
-  } else {
-    log.Printf("running with specified max_retries: %s", strconv.Itoa(maxAttempts))
-  }
+	var response []*PullRequest
 
-  if delayBetweenPages == 0 {
-    delayBetweenPages = 500
-    log.Printf("No delay_between_pages value specified, using default value 500ms")
-  } else if delayBetweenPages > 10000 {
-    delayBetweenPages = 10000
-    log.Printf("max delay_between_pages value exceeded, using max value 10,000ms")
-  } else {
-    log.Printf("running with specified delay_between_pages: %sms", strconv.Itoa(delayBetweenPages))
-  }
+	log.Printf("Retrieving last %d PRs (%d per page)", p.MaxPRs, p.PageSize)
+	maxPages := p.MaxPRs / p.PageSize
 
-  if orderField == "" {
-    orderField = "UPDATED_AT"
-    log.Printf("sort_field not specified, using default value 'UPDATED_AT'")
-  }
+	page := 0
 
-  switch orderDirection {
-  case "DESC":
-    orderDirection = "DESC"
-    log.Printf("running with specified sort_direction: 'DESC'")
-  case "ASC":
-    orderDirection = "ASC"
-    log.Printf("running with specified sort_direction: 'ASC'")
-  case "":
-    orderDirection = "DESC"
-    log.Printf("sort_direction not specified, using default value 'DESC'")
-  default:
-    orderDirection = "DESC"
-    log.Printf("sort_direction %s not valid, using default value 'DESC'", orderDirection)
-    log.Printf("running with sort_direction: " + orderDirection)
-  }
+	for {
+		page++
+		log.Printf("Page %d of %d", page, maxPages)
+		attempt := 1
+		for {
+			if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
+				if attempt <= p.MaxRetries {
+					log.Printf("Attempt %d of %d failed, retrying", attempt, p.MaxRetries)
+					log.Printf("check failed: %s", err)
+					attempt++
+				} else {
+					return nil, err
+				}
+			} else {
+				break
+			}
+		}
+		for _, p := range query.Repository.PullRequests.Edges {
+			labels := make([]LabelObject, len(p.Node.Labels.Edges))
+			for _, l := range p.Node.Labels.Edges {
+				labels = append(labels, l.Node.LabelObject)
+			}
 
-  var query struct {
-    Repository struct {
-      PullRequests struct {
-        Edges []struct {
-          Node struct {
-            PullRequestObject
-            Reviews struct {
-              TotalCount int
-            } `graphql:"reviews(states: $prReviewStates)"`
-            Commits struct {
-              Edges []struct {
-                Node struct {
-                  Commit struct {
-                    CommitObject
-                    Status StatusObject
-                  }
-                }
-              }
-            } `graphql:"commits(last:$commitsLast)"`
-            Labels struct {
-              Edges []struct {
-                Node struct {
-                  LabelObject
-                }
-              }
-            } `graphql:"labels(first:$labelsFirst)"`
-          }
-        }
-        PageInfo struct {
-          EndCursor   githubv4.String
-          HasNextPage bool
-        }
-      } `graphql:"pullRequests(first:$prFirst,states:$prStates,after:$prCursor,orderBy:{field:$orderField,direction:$orderDirection})"`
-    } `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
-  }
+			for _, c := range p.Node.Commits.Edges {
+				response = append(response, &PullRequest{
+					PullRequestObject:   p.Node.PullRequestObject,
+					Tip:                 c.Node.Commit.CommitObject,
+					ApprovedReviewCount: p.Node.Reviews.TotalCount,
+					Labels:              labels,
+					HasStatus:           !(c.Node.Commit.Status.Context.Context == nil),
+				})
+			}
+		}
+		if !query.Repository.PullRequests.PageInfo.HasNextPage || page >= maxPages {
+			break
+		}
+		vars["prCursor"] = query.Repository.PullRequests.PageInfo.EndCursor
 
-  vars := map[string]interface{}{
-    "repositoryOwner":   githubv4.String(m.Owner),
-    "repositoryName":    githubv4.String(m.Repository),
-    "statusContextName": githubv4.String(m.StatusContext),
-    "prFirst":           githubv4.Int(perPage),
-    "prStates":          prStates,
-    "prCursor":          (*githubv4.String)(nil),
-    "orderField":        githubv4.IssueOrderField(orderField),
-    "orderDirection":    githubv4.OrderDirection(orderDirection),
-    "commitsLast":       githubv4.Int(1),
-    "prReviewStates":    []githubv4.PullRequestReviewState{githubv4.PullRequestReviewStateApproved},
-    "labelsFirst":       githubv4.Int(10),
-  }
-
-  var response []*PullRequest
-
-
-  log.Printf("Retrieving last %d PRs (%d per page)", maxPRs, perPage)
-  maxPages := maxPRs / perPage
-  page := 0
-
-  for {
-    page++
-    log.Printf("Page %d of %d", page, maxPages)
-    attempt := 1
-    for {
-      if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
-        if attempt <= maxAttempts {
-          log.Printf("Attempt %d of %d failed, retrying", attempt, maxAttempts)
-          log.Printf("check failed: %s", err)
-          attempt++
-        } else {
-          return nil, err
-        }
-      } else {
-        break
-      }
-    }
-    for _, p := range query.Repository.PullRequests.Edges {
-      labels := make([]LabelObject, len(p.Node.Labels.Edges))
-      for _, l := range p.Node.Labels.Edges {
-        labels = append(labels, l.Node.LabelObject)
-      }
-
-      for _, c := range p.Node.Commits.Edges {
-        response = append(response, &PullRequest{
-          PullRequestObject:   p.Node.PullRequestObject,
-          Tip:                 c.Node.Commit.CommitObject,
-          ApprovedReviewCount: p.Node.Reviews.TotalCount,
-          Labels:              labels,
-          HasStatus:           !(c.Node.Commit.Status.Context.Context == nil),
-        })
-      }
-    }
-    if !query.Repository.PullRequests.PageInfo.HasNextPage || page >= maxPages {
-      break
-    }
-    vars["prCursor"] = query.Repository.PullRequests.PageInfo.EndCursor
-
-    // Sleep - github API does not like fast querying
-    time.Sleep(time.Duration(delayBetweenPages) * time.Millisecond)
-  }
-  return response, nil
+		// Sleep - github API does not like fast querying
+		time.Sleep(time.Duration(p.DelayBetweenPages) * time.Millisecond)
+	}
+	return response, nil
 }
 
 // ListModifiedFiles in a pull request (not supported by V4 API).
 func (m *GithubClient) ListModifiedFiles(prNumber int) ([]string, error) {
-  var files []string
+	var files []string
 
-  opt := &github.ListOptions{
-    PerPage: 100,
-  }
-  for {
-    result, response, err := m.V3.PullRequests.ListFiles(
-      context.TODO(),
-      m.Owner,
-      m.Repository,
-      prNumber,
-      opt,
-    )
-    if err != nil {
-      return nil, err
-    }
-    for _, f := range result {
-      files = append(files, *f.Filename)
-    }
-    if response.NextPage == 0 {
-      break
-    }
-    opt.Page = response.NextPage
-  }
-  return files, nil
+	opt := &github.ListOptions{
+		PerPage: 100,
+	}
+	for {
+		result, response, err := m.V3.PullRequests.ListFiles(
+			context.TODO(),
+			m.Owner,
+			m.Repository,
+			prNumber,
+			opt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		for _, f := range result {
+			files = append(files, *f.Filename)
+		}
+		if response.NextPage == 0 {
+			break
+		}
+		opt.Page = response.NextPage
+	}
+	return files, nil
 }
 
 // PostComment to a pull request or issue.
 func (m *GithubClient) PostComment(prNumber, comment string) error {
-  pr, err := strconv.Atoi(prNumber)
-  if err != nil {
-    return fmt.Errorf("failed to convert pull request number to int: %s", err)
-  }
+	pr, err := strconv.Atoi(prNumber)
+	if err != nil {
+		return fmt.Errorf("failed to convert pull request number to int: %s", err)
+	}
 
-  _, _, err = m.V3.Issues.CreateComment(
-    context.TODO(),
-    m.Owner,
-    m.Repository,
-    pr,
-    &github.IssueComment{
-      Body: github.String(comment),
-    },
-  )
-  return err
+	_, _, err = m.V3.Issues.CreateComment(
+		context.TODO(),
+		m.Owner,
+		m.Repository,
+		pr,
+		&github.IssueComment{
+			Body: github.String(comment),
+		},
+	)
+	return err
 }
 
 // GetChangedFiles ...
 func (m *GithubClient) GetChangedFiles(prNumber string, commitRef string) ([]ChangedFileObject, error) {
-  pr, err := strconv.Atoi(prNumber)
-  if err != nil {
-    return nil, fmt.Errorf("failed to convert pull request number to int: %s", err)
-  }
+	pr, err := strconv.Atoi(prNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert pull request number to int: %s", err)
+	}
 
-  var cfo []ChangedFileObject
+	var cfo []ChangedFileObject
 
-  var filequery struct {
-    Repository struct {
-      PullRequest struct {
-        Files struct {
-          Edges []struct {
-            Node struct {
-              ChangedFileObject
-            }
-          } `graphql:"edges"`
-          PageInfo struct {
-            EndCursor   githubv4.String
-            HasNextPage bool
-          } `graphql:"pageInfo"`
-        } `graphql:"files(first:$changedFilesFirst, after: $changedFilesEndCursor)"`
-      } `graphql:"pullRequest(number:$prNumber)"`
-    } `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
-  }
+	var filequery struct {
+		Repository struct {
+			PullRequest struct {
+				Files struct {
+					Edges []struct {
+						Node struct {
+							ChangedFileObject
+						}
+					} `graphql:"edges"`
+					PageInfo struct {
+						EndCursor   githubv4.String
+						HasNextPage bool
+					} `graphql:"pageInfo"`
+				} `graphql:"files(first:$changedFilesFirst, after: $changedFilesEndCursor)"`
+			} `graphql:"pullRequest(number:$prNumber)"`
+		} `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
+	}
 
-  offset := ""
+	offset := ""
 
-  for {
-    vars := map[string]interface{}{
-      "repositoryOwner":       githubv4.String(m.Owner),
-      "repositoryName":        githubv4.String(m.Repository),
-      "prNumber":              githubv4.Int(pr),
-      "changedFilesFirst":     githubv4.Int(100),
-      "changedFilesEndCursor": githubv4.String(offset),
-    }
+	for {
+		vars := map[string]interface{}{
+			"repositoryOwner":       githubv4.String(m.Owner),
+			"repositoryName":        githubv4.String(m.Repository),
+			"prNumber":              githubv4.Int(pr),
+			"changedFilesFirst":     githubv4.Int(100),
+			"changedFilesEndCursor": githubv4.String(offset),
+		}
 
-    if err := m.V4.Query(context.TODO(), &filequery, vars); err != nil {
-      return nil, err
-    }
+		if err := m.V4.Query(context.TODO(), &filequery, vars); err != nil {
+			return nil, err
+		}
 
-    for _, f := range filequery.Repository.PullRequest.Files.Edges {
-      cfo = append(cfo, ChangedFileObject{Path: f.Node.Path})
-    }
+		for _, f := range filequery.Repository.PullRequest.Files.Edges {
+			cfo = append(cfo, ChangedFileObject{Path: f.Node.Path})
+		}
 
-    if !filequery.Repository.PullRequest.Files.PageInfo.HasNextPage {
-      break
-    }
+		if !filequery.Repository.PullRequest.Files.PageInfo.HasNextPage {
+			break
+		}
 
-    offset = string(filequery.Repository.PullRequest.Files.PageInfo.EndCursor)
-  }
+		offset = string(filequery.Repository.PullRequest.Files.PageInfo.EndCursor)
+	}
 
-  return cfo, nil
+	return cfo, nil
 }
 
 // GetPullRequest ...
 func (m *GithubClient) GetPullRequest(prNumber, commitRef string) (*PullRequest, error) {
-  pr, err := strconv.Atoi(prNumber)
-  if err != nil {
-    return nil, fmt.Errorf("failed to convert pull request number to int: %s", err)
-  }
+	pr, err := strconv.Atoi(prNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert pull request number to int: %s", err)
+	}
 
-  var query struct {
-    Repository struct {
-      PullRequest struct {
-        PullRequestObject
-        Commits struct {
-          Edges []struct {
-            Node struct {
-              Commit CommitObject
-            }
-          }
-        } `graphql:"commits(last:$commitsLast)"`
-      } `graphql:"pullRequest(number:$prNumber)"`
-    } `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
-  }
+	var query struct {
+		Repository struct {
+			PullRequest struct {
+				PullRequestObject
+				Commits struct {
+					Edges []struct {
+						Node struct {
+							Commit CommitObject
+						}
+					}
+				} `graphql:"commits(last:$commitsLast)"`
+			} `graphql:"pullRequest(number:$prNumber)"`
+		} `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
+	}
 
-  vars := map[string]interface{}{
-    "repositoryOwner": githubv4.String(m.Owner),
-    "repositoryName":  githubv4.String(m.Repository),
-    "prNumber":        githubv4.Int(pr),
-    "commitsLast":     githubv4.Int(100),
-  }
+	vars := map[string]interface{}{
+		"repositoryOwner": githubv4.String(m.Owner),
+		"repositoryName":  githubv4.String(m.Repository),
+		"prNumber":        githubv4.Int(pr),
+		"commitsLast":     githubv4.Int(100),
+	}
 
-  // TODO: Pagination - in case someone pushes > 100 commits before the build has time to start :p
-  if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
-    return nil, err
-  }
+	// TODO: Pagination - in case someone pushes > 100 commits before the build has time to start :p
+	if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
+		return nil, err
+	}
 
-  for _, c := range query.Repository.PullRequest.Commits.Edges {
-    if c.Node.Commit.OID == commitRef {
-      // Return as soon as we find the correct ref.
-      return &PullRequest{
-        PullRequestObject: query.Repository.PullRequest.PullRequestObject,
-        Tip:               c.Node.Commit,
-      }, nil
-    }
-  }
+	for _, c := range query.Repository.PullRequest.Commits.Edges {
+		if c.Node.Commit.OID == commitRef {
+			// Return as soon as we find the correct ref.
+			return &PullRequest{
+				PullRequestObject: query.Repository.PullRequest.PullRequestObject,
+				Tip:               c.Node.Commit,
+			}, nil
+		}
+	}
 
-  // Return an error if the commit was not found
-  return nil, fmt.Errorf("commit with ref '%s' does not exist", commitRef)
+	// Return an error if the commit was not found
+	return nil, fmt.Errorf("commit with ref '%s' does not exist", commitRef)
 }
 
 // UpdateCommitStatus for a given commit (not supported by V4 API).
 func (m *GithubClient) UpdateCommitStatus(commitRef, baseContext, statusContext, status, targetURL, description string) error {
-  if baseContext == "" {
-    baseContext = "concourse-ci"
-  }
+	if baseContext == "" {
+		baseContext = "concourse-ci"
+	}
 
-  if statusContext == "" {
-    statusContext = "status"
-  }
+	if statusContext == "" {
+		statusContext = "status"
+	}
 
-  if targetURL == "" {
-    targetURL = strings.Join([]string{os.Getenv("ATC_EXTERNAL_URL"), "builds", os.Getenv("BUILD_ID")}, "/")
-  }
+	if targetURL == "" {
+		targetURL = strings.Join([]string{os.Getenv("ATC_EXTERNAL_URL"), "builds", os.Getenv("BUILD_ID")}, "/")
+	}
 
-  if description == "" {
-    description = fmt.Sprintf("Concourse CI build %s", status)
-  }
+	if description == "" {
+		description = fmt.Sprintf("Concourse CI build %s", status)
+	}
 
-  _, _, err := m.V3.Repositories.CreateStatus(
-    context.TODO(),
-    m.Owner,
-    m.Repository,
-    commitRef,
-    &github.RepoStatus{
-      State:       github.String(strings.ToLower(status)),
-      TargetURL:   github.String(targetURL),
-      Description: github.String(description),
-      Context:     github.String(path.Join(baseContext, statusContext)),
-    },
-  )
-  return err
+	_, _, err := m.V3.Repositories.CreateStatus(
+		context.TODO(),
+		m.Owner,
+		m.Repository,
+		commitRef,
+		&github.RepoStatus{
+			State:       github.String(strings.ToLower(status)),
+			TargetURL:   github.String(targetURL),
+			Description: github.String(description),
+			Context:     github.String(path.Join(baseContext, statusContext)),
+		},
+	)
+	return err
 }
 
 func (m *GithubClient) DeletePreviousComments(prNumber string) error {
-  pr, err := strconv.Atoi(prNumber)
-  if err != nil {
-    return fmt.Errorf("failed to convert pull request number to int: %s", err)
-  }
+	pr, err := strconv.Atoi(prNumber)
+	if err != nil {
+		return fmt.Errorf("failed to convert pull request number to int: %s", err)
+	}
 
-  var getComments struct {
-    Viewer struct {
-      Login string
-    }
-    Repository struct {
-      PullRequest struct {
-        Id       string
-        Comments struct {
-          Edges []struct {
-            Node struct {
-              DatabaseId int64
-              Author     struct {
-                Login string
-              }
-            }
-          }
-        } `graphql:"comments(last:$commentsLast)"`
-      } `graphql:"pullRequest(number:$prNumber)"`
-    } `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
-  }
+	var getComments struct {
+		Viewer struct {
+			Login string
+		}
+		Repository struct {
+			PullRequest struct {
+				Id       string
+				Comments struct {
+					Edges []struct {
+						Node struct {
+							DatabaseId int64
+							Author     struct {
+								Login string
+							}
+						}
+					}
+				} `graphql:"comments(last:$commentsLast)"`
+			} `graphql:"pullRequest(number:$prNumber)"`
+		} `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
+	}
 
-  vars := map[string]interface{}{
-    "repositoryOwner": githubv4.String(m.Owner),
-    "repositoryName":  githubv4.String(m.Repository),
-    "prNumber":        githubv4.Int(pr),
-    "commentsLast":    githubv4.Int(100),
-  }
+	vars := map[string]interface{}{
+		"repositoryOwner": githubv4.String(m.Owner),
+		"repositoryName":  githubv4.String(m.Repository),
+		"prNumber":        githubv4.Int(pr),
+		"commentsLast":    githubv4.Int(100),
+	}
 
-  if err := m.V4.Query(context.TODO(), &getComments, vars); err != nil {
-    return err
-  }
+	if err := m.V4.Query(context.TODO(), &getComments, vars); err != nil {
+		return err
+	}
 
-  for _, e := range getComments.Repository.PullRequest.Comments.Edges {
-    if e.Node.Author.Login == getComments.Viewer.Login {
-      _, err := m.V3.Issues.DeleteComment(context.TODO(), m.Owner, m.Repository, e.Node.DatabaseId)
-      if err != nil {
-        return err
-      }
-    }
-  }
+	for _, e := range getComments.Repository.PullRequest.Comments.Edges {
+		if e.Node.Author.Login == getComments.Viewer.Login {
+			_, err := m.V3.Issues.DeleteComment(context.TODO(), m.Owner, m.Repository, e.Node.DatabaseId)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
-  return nil
+	return nil
 }
 
 func parseRepository(s string) (string, string, error) {
-  parts := strings.Split(s, "/")
-  if len(parts) != 2 {
-    return "", "", errors.New("malformed repository")
-  }
-  return parts[0], parts[1], nil
+	parts := strings.Split(s, "/")
+	if len(parts) != 2 {
+		return "", "", errors.New("malformed repository")
+	}
+	return parts[0], parts[1], nil
 }
