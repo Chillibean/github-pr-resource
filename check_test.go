@@ -642,6 +642,21 @@ func TestSetPaginationParameters(t *testing.T) {
 			},
 		},
 
+		{
+			description: "does not set page_size to zero if max_pr omitted",
+			inputParameters: resource.Parameters{
+				PageSize:   20,
+			},
+			expected: resource.Parameters{
+				PageSize          : 20,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+
 
 		{
 			description: "sets default sort_field if column not valid",

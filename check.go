@@ -222,8 +222,8 @@ func SetPaginationParameters(p Parameters) Parameters {
 	} else if p.PageSize > 200 {
 		outputParameters.PageSize = 200
 		fmt.Println("Max page_size exceeded, using max value 200")
-	} else if p.PageSize > p.MaxPRs {
-		outputParameters.PageSize = p.MaxPRs
+	} else if p.PageSize > outputParameters.MaxPRs {
+		outputParameters.PageSize = outputParameters.MaxPRs
 	} else {
 		outputParameters.PageSize = p.PageSize
 	}
