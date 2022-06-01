@@ -588,19 +588,19 @@ func TestIsInsidePath(t *testing.T) {
 // SortField
 // SortDirection
 
-func TestCheckParameters(t *testing.T) {
+func TestSetPaginationParameters(t *testing.T) {
 	tests := []struct {
 		description  string
-		parameters   resource.Parameters
+		inputParameters   resource.Parameters
 		expected     resource.Parameters
 	}{
 		{
 			description: "runs with max_prs if specified",
-			parameters: resource.Parameters{
+			inputParameters: resource.Parameters{
 				MaxPRs:   3,
 			},
 			expected: resource.Parameters{
-				PageSize          : 200,
+				PageSize          : 50,
 				MaxPRs            : 3,
 				SortField         : "UPDATED_AT",
 				SortDirection     : "DESC",
@@ -611,12 +611,12 @@ func TestCheckParameters(t *testing.T) {
 
 		{
 			description: "runs with page_size if specified",
-			parameters: resource.Parameters{
+			inputParameters: resource.Parameters{
 				PageSize: 25,
 			},
 			expected: resource.Parameters{
 				PageSize          : 25,
-				MaxPRs            : 3,
+				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
 				SortDirection     : "DESC",
 				MaxRetries        : 4,
@@ -627,17 +627,23 @@ func TestCheckParameters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			prStates := []githubv4.PullRequestState{githubv4.PullRequestStateOpen}
-			github := new(fakes.FakeGithub)
-			github.ListPullRequests(prStates, tc.parameters)
-
-			// input := resource.CheckRequest{Source: {}, Version: {"pr": "test"}, Parameters: tc.parameters}
-			// output, err := resource.Check(input, github)
-			_, output := github.ListPullRequestsArgsForCall(0)
-
-				assert.Equal(t, tc.expected, output)
-				// assert.Equal(t, tc.expected, github.ListPullRequestsArgsForCall(prState, tc.parameters))
+			got := resource.SetPaginationParameters(tc.inputParameters)
+			assert.Equal(t, tc.expected, got)
 		})
 	}
+
+	// t.Run(tc.description, func(t *testing.T) {
+	// 	prStates := []githubv4.PullRequestState{githubv4.PullRequestStateOpen}
+	// 	github := new(fakes.FakeGithub)
+	// 	github.ListPullRequests(prStates, tc.parameters)
+
+	// 	// input := resource.CheckRequest{Source: {}, Version: {"pr": "test"}, Parameters: tc.parameters}
+	// 	// output, err := resource.Check(input, github)
+	// 	_, output := github.ListPullRequestsArgsForCall(0)
+
+	// 		assert.Equal(t, tc.expected, output)
+	// 		// assert.Equal(t, tc.expected, github.ListPullRequestsArgsForCall(prState, tc.parameters))
+	// })
+	// }
 
 }

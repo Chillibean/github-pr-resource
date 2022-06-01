@@ -217,6 +217,7 @@ func SetPaginationParameters(p Parameters) Parameters {
 		outputParameters.PageSize = 200
 		log.Printf("Max page_size exceeded, using max value 200")
 	} else {
+		outputParameters.PageSize = p.PageSize
 		log.Printf("running with specified per_page: %s", strconv.Itoa(p.PageSize))
 	}
 
@@ -228,6 +229,7 @@ func SetPaginationParameters(p Parameters) Parameters {
 		log.Printf("max max_prs value exceeded, using max value 500")
 	} else {
 		log.Printf("running with specified max_prs: %s", strconv.Itoa(p.MaxPRs))
+		outputParameters.MaxPRs = p.MaxPRs
 	}
 
 	if p.MaxRetries == 0 {
