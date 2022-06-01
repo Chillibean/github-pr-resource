@@ -573,12 +573,6 @@ func TestIsInsidePath(t *testing.T) {
 }
 
 
-// i want to test that given i provide json of input args
-// that github.ListPullRequests is called with the corect
-// arguments. This means using the fake github client
-// and the method stub github.ListPullRequestsArgsForCall
-// to check that the correct args have been passed
-//
 // permutations required
 //
 // MaxPrs
@@ -595,7 +589,35 @@ func TestSetPaginationParameters(t *testing.T) {
 		expected     resource.Parameters
 	}{
 		{
-			description: "runs with max_prs if specified",
+			description: "sets defaults if no input given",
+			inputParameters: resource.Parameters{},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets page_size if specified",
+			inputParameters: resource.Parameters{
+				PageSize: 25,
+			},
+			expected: resource.Parameters{
+				PageSize          : 25,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets max_prs if specified",
 			inputParameters: resource.Parameters{
 				MaxPRs:   3,
 			},
@@ -609,18 +631,66 @@ func TestSetPaginationParameters(t *testing.T) {
 			},
 		},
 
+		// TODO: should make SortField into a type
+		// look up what the possible values are on 
+		// github
 		{
-			description: "runs with page_size if specified",
+			description: "sets sort_field if specified",
 			inputParameters: resource.Parameters{
-				PageSize: 25,
+				SortField:   "UPDATED_AT",
 			},
 			expected: resource.Parameters{
-				PageSize          : 25,
+				PageSize          : 50,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
 				SortDirection     : "DESC",
 				MaxRetries        : 4,
 				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets sort_direction if specified",
+			inputParameters: resource.Parameters{
+				SortDirection:   "ASC",
+			},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "ASC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets max_retries if specified",
+			inputParameters: resource.Parameters{
+				MaxRetries:   10,
+			},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 10,
+				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets delay_between_pages if specified",
+			inputParameters: resource.Parameters{
+				DelayBetweenPages:   10000,
+			},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 10000,
 			},
 		},
 	}
@@ -631,19 +701,4 @@ func TestSetPaginationParameters(t *testing.T) {
 			assert.Equal(t, tc.expected, got)
 		})
 	}
-
-	// t.Run(tc.description, func(t *testing.T) {
-	// 	prStates := []githubv4.PullRequestState{githubv4.PullRequestStateOpen}
-	// 	github := new(fakes.FakeGithub)
-	// 	github.ListPullRequests(prStates, tc.parameters)
-
-	// 	// input := resource.CheckRequest{Source: {}, Version: {"pr": "test"}, Parameters: tc.parameters}
-	// 	// output, err := resource.Check(input, github)
-	// 	_, output := github.ListPullRequestsArgsForCall(0)
-
-	// 		assert.Equal(t, tc.expected, output)
-	// 		// assert.Equal(t, tc.expected, github.ListPullRequestsArgsForCall(prState, tc.parameters))
-	// })
-	// }
-
 }

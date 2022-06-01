@@ -259,7 +259,7 @@ func SetPaginationParameters(p Parameters) Parameters {
 		outputParameters.SortDirection = "DESC"
 	default:
 		outputParameters.SortDirection = "DESC"
-		fmt.Println("sort_direction %s not valid, using default value 'DESC'", p.SortDirection)
+		fmt.Printf("sort_direction %s not valid, using default value 'DESC'", p.SortDirection)
 	}
 
 	return outputParameters
