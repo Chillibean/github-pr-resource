@@ -15,7 +15,6 @@ import (
 // Check (business logic)
 func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 	var response CheckResponse
-	parameters := request.Parameters
 
 	// Filter out pull request if it does not have a filtered state
 	filterStates := []githubv4.PullRequestState{githubv4.PullRequestStateOpen}
@@ -23,77 +22,13 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 		filterStates = request.Source.States
 	}
 
-	perPage := request.Parameters.PageSize
-	if perPage == 0 {
-		parameters.PageSize = 50
-		log.Printf("No page_size specified, using default value 50")
-	} else if request.Parameters.PageSize > 200 {
-		parameters.PageSize = 200
-		log.Printf("Max page_size exceeded, using max value 200")
-	} else {
-		log.Printf("running with specified per_page: %s", strconv.Itoa(perPage))
+	uncheckedParameters := request.Parameters
+	var checkedParameters Parameters
+	if &uncheckedParameters != nil {
+		checkedParameters = SetPaginationParameters(uncheckedParameters)
 	}
 
-	maxPRs := request.Parameters.MaxPRs
-	if maxPRs == 0 {
-		parameters.MaxPRs = 200
-		log.Printf("No max_prs value specified, using default value 200")
-	} else if maxPRs > 500 {
-		parameters.MaxPRs = 500
-		log.Printf("max max_prs value exceeded, using max value 500")
-	} else {
-		log.Printf("running with specified max_prs: %s", strconv.Itoa(maxPRs))
-	}
-
-	maxAttempts := request.Parameters.MaxRetries
-	if maxAttempts == 0 {
-		parameters.MaxRetries = 4
-		log.Printf("No max_retries value specified, using default value 4")
-	} else if maxAttempts > 10 {
-		parameters.MaxRetries = 10
-		log.Printf("max max_retries value exceeded, using max value 10")
-	} else {
-		log.Printf("running with specified max_retries: %s", strconv.Itoa(maxAttempts))
-	}
-
-	delayBetweenPages := request.Parameters.DelayBetweenPages
-	if delayBetweenPages == 0 {
-		parameters.DelayBetweenPages = 500
-		log.Printf("No delay_between_pages value specified, using default value 500ms")
-	} else if delayBetweenPages > 10000 {
-		parameters.DelayBetweenPages = 10000
-		log.Printf("max delay_between_pages value exceeded, using max value 10,000ms")
-	} else {
-		parameters.DelayBetweenPages = delayBetweenPages
-		log.Printf("running with specified delay_between_pages: %sms", strconv.Itoa(delayBetweenPages))
-	}
-
-	orderField := request.Parameters.SortField
-	if orderField == "" {
-		parameters.SortField = "UPDATED_AT"
-		log.Printf("No sort_field specified, using default value 'UPDATED_AT'")
-	} else {
-		parameters.SortField = orderField
-		log.Printf("running with specified sort_direction: %s", orderField)
-	}
-
-	orderDirection := request.Parameters.SortDirection
-	switch orderDirection {
-	case "DESC":
-		parameters.SortDirection = "DESC"
-		log.Printf("running with specified sort_direction: 'DESC'")
-	case "ASC":
-		parameters.SortDirection = "ASC"
-		log.Printf("running with specified sort_direction: 'ASC'")
-	case "":
-		parameters.SortDirection = "DESC"
-		log.Printf("No sort_direction specified, using default value 'DESC'")
-	default:
-		parameters.SortDirection = "DESC"
-		log.Printf("sort_direction %s not valid, using default value 'DESC'", orderDirection)
-	}
-
-	pulls, err := manager.ListPullRequests(filterStates, parameters)
+	pulls, err := manager.ListPullRequests(filterStates, checkedParameters)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last commits: %s", err)
@@ -270,6 +205,77 @@ func IsInsidePath(parent, child string) bool {
 	}
 
 	return strings.HasPrefix(child, parentWithTrailingSlash)
+}
+
+func SetPaginationParameters(p Parameters) Parameters {
+	var outputParameters Parameters
+
+	if p.PageSize == 0 {
+		outputParameters.PageSize = 50
+		log.Printf("No page_size specified, using default value 50")
+	} else if p.PageSize > 200 {
+		outputParameters.PageSize = 200
+		log.Printf("Max page_size exceeded, using max value 200")
+	} else {
+		log.Printf("running with specified per_page: %s", strconv.Itoa(p.PageSize))
+	}
+
+	if p.MaxPRs == 0 {
+		outputParameters.MaxPRs = 200
+		log.Printf("No max_prs value specified, using default value 200")
+	} else if p.MaxPRs > 500 {
+		outputParameters.MaxPRs = 500
+		log.Printf("max max_prs value exceeded, using max value 500")
+	} else {
+		log.Printf("running with specified max_prs: %s", strconv.Itoa(p.MaxPRs))
+	}
+
+	if p.MaxRetries == 0 {
+		outputParameters.MaxRetries = 4
+		log.Printf("No max_retries value specified, using default value 4")
+	} else if p.MaxRetries > 10 {
+		outputParameters.MaxRetries = 10
+		log.Printf("max max_retries value exceeded, using max value 10")
+	} else {
+		log.Printf("running with specified max_retries: %s", strconv.Itoa(p.MaxRetries))
+	}
+
+	if p.DelayBetweenPages == 0 {
+		outputParameters.DelayBetweenPages = 500
+		log.Printf("No delay_between_pages value specified, using default value 500ms")
+	} else if p.DelayBetweenPages > 10000 {
+		outputParameters.DelayBetweenPages = 10000
+		log.Printf("max delay_between_pages value exceeded, using max value 10,000ms")
+	} else {
+		outputParameters.DelayBetweenPages = p.DelayBetweenPages
+		log.Printf("running with specified delay_between_pages: %sms", strconv.Itoa(p.DelayBetweenPages))
+	}
+
+	if p.SortField == "" {
+		outputParameters.SortField = "UPDATED_AT"
+		log.Printf("No sort_field specified, using default value 'UPDATED_AT'")
+	} else {
+		outputParameters.SortField = p.SortField
+		log.Printf("running with specified sort_direction: %s", p.SortField)
+	}
+
+	switch p.SortDirection {
+	case "DESC":
+		outputParameters.SortDirection = "DESC"
+		log.Printf("running with specified sort_direction: 'DESC'")
+	case "ASC":
+		outputParameters.SortDirection = "ASC"
+		log.Printf("running with specified sort_direction: 'ASC'")
+	case "":
+		outputParameters.SortDirection = "DESC"
+		log.Printf("No sort_direction specified, using default value 'DESC'")
+	default:
+		outputParameters.SortDirection = "DESC"
+		log.Printf("sort_direction %s not valid, using default value 'DESC'", p.SortDirection)
+	}
+
+	return outputParameters
+
 }
 
 // CheckRequest ...
