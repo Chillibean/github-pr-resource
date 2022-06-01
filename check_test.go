@@ -572,16 +572,6 @@ func TestIsInsidePath(t *testing.T) {
 	}
 }
 
-
-// permutations required
-//
-// MaxPrs
-// Page Size
-// MaxRetries
-// DelayBetweenPages
-// SortField
-// SortDirection
-
 func TestSetPaginationParameters(t *testing.T) {
 	tests := []struct {
 		description  string
@@ -602,72 +592,74 @@ func TestSetPaginationParameters(t *testing.T) {
 		},
 
 		{
-			description: "sets page_size if specified",
+			description: "sets values if specified",
 			inputParameters: resource.Parameters{
-				PageSize: 25,
+				PageSize: 10,
+				MaxPRs: 40,
+				SortField: "CREATED_AT",
+				SortDirection: "ASC",
+				MaxRetries: 2,
+				DelayBetweenPages: 7000,
 			},
 			expected: resource.Parameters{
-				PageSize          : 25,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
-			},
-		},
-
-		{
-			description: "sets max_prs if specified",
-			inputParameters: resource.Parameters{
-				MaxPRs:   3,
-			},
-			expected: resource.Parameters{
-				PageSize          : 50,
-				MaxPRs            : 3,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
-			},
-		},
-
-		// TODO: should make SortField into a type
-		// look up what the possible values are on 
-		// github
-		{
-			description: "sets sort_field if specified",
-			inputParameters: resource.Parameters{
-				SortField:   "UPDATED_AT",
-			},
-			expected: resource.Parameters{
-				PageSize          : 50,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
-			},
-		},
-
-		{
-			description: "sets sort_direction if specified",
-			inputParameters: resource.Parameters{
-				SortDirection:   "ASC",
-			},
-			expected: resource.Parameters{
-				PageSize          : 50,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
+				PageSize          : 10,
+				MaxPRs            : 40,
+				SortField         : "CREATED_AT",
 				SortDirection     : "ASC",
+				MaxRetries        : 2,
+				DelayBetweenPages : 7000,
+			},
+		},
+
+		{
+			description: "sets max_prs to default if exceeds limit",
+			inputParameters: resource.Parameters{
+				MaxPRs:   501,
+			},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 500,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
 				MaxRetries        : 4,
 				DelayBetweenPages : 500,
 			},
 		},
 
 		{
-			description: "sets max_retries if specified",
+			description: "sets default sort_field if column not valid",
 			inputParameters: resource.Parameters{
-				MaxRetries:   10,
+				SortField:   "ZZZ_WRONG_FIELD",
+			},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets default sort_direction if invalid value provided",
+			inputParameters: resource.Parameters{
+				SortDirection:   "INVALID_SORT",
+			},
+			expected: resource.Parameters{
+				PageSize          : 50,
+				MaxPRs            : 200,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+
+		{
+			description: "sets limit on  max_retries if max value exceeded",
+			inputParameters: resource.Parameters{
+				MaxRetries:   11,
 			},
 			expected: resource.Parameters{
 				PageSize          : 50,
@@ -680,9 +672,9 @@ func TestSetPaginationParameters(t *testing.T) {
 		},
 
 		{
-			description: "sets delay_between_pages if specified",
+			description: "sets limit on delay_between_pages if max value exceeded",
 			inputParameters: resource.Parameters{
-				DelayBetweenPages:   10000,
+				DelayBetweenPages:   10001,
 			},
 			expected: resource.Parameters{
 				PageSize          : 50,

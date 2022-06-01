@@ -244,10 +244,18 @@ func SetPaginationParameters(p Parameters) Parameters {
 		outputParameters.DelayBetweenPages = p.DelayBetweenPages
 	}
 
-	if p.SortField == "" {
+	switch p.SortField {
+	case "UPDATED_AT":
 		outputParameters.SortField = "UPDATED_AT"
-	} else {
-		outputParameters.SortField = p.SortField
+	case "CREATED_AT":
+		outputParameters.SortField = "CREATED_AT"
+	case "COMMENTS":
+		outputParameters.SortField = "COMMENTS"
+	case "":
+		outputParameters.SortField = "UPDATED_AT"
+	default:
+		outputParameters.SortField = "UPDATED_AT"
+		fmt.Printf("sort_field '%s' not valid, using default value 'UPDATED_AT' \n", p.SortField)
 	}
 
 	switch p.SortDirection {
@@ -259,7 +267,7 @@ func SetPaginationParameters(p Parameters) Parameters {
 		outputParameters.SortDirection = "DESC"
 	default:
 		outputParameters.SortDirection = "DESC"
-		fmt.Printf("sort_direction %s not valid, using default value 'DESC'", p.SortDirection)
+		fmt.Printf("sort_direction '%s' not valid, using default value 'DESC' \n", p.SortDirection)
 	}
 
 	return outputParameters
