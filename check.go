@@ -208,15 +208,6 @@ func IsInsidePath(parent, child string) bool {
 func SetPaginationParameters(p Parameters) Parameters {
 	var outputParameters Parameters
 
-	if p.PageSize == 0 {
-		outputParameters.PageSize = 50
-	} else if p.PageSize > 200 {
-		outputParameters.PageSize = 200
-		fmt.Println("Max page_size exceeded, using max value 200")
-	} else {
-		outputParameters.PageSize = p.PageSize
-	}
-
 	if p.MaxPRs == 0 {
 		outputParameters.MaxPRs = 200
 	} else if p.MaxPRs > 500 {
@@ -225,6 +216,18 @@ func SetPaginationParameters(p Parameters) Parameters {
 	} else {
 		outputParameters.MaxPRs = p.MaxPRs
 	}
+
+	if p.PageSize == 0 {
+		outputParameters.PageSize = 50
+	} else if p.PageSize > 200 {
+		outputParameters.PageSize = 200
+		fmt.Println("Max page_size exceeded, using max value 200")
+	} else if p.PageSize > p.MaxPRs {
+		outputParameters.PageSize = p.MaxPRs
+	} else {
+		outputParameters.PageSize = p.PageSize
+	}
+
 
 	if p.MaxRetries == 0 {
 		outputParameters.MaxRetries = 4
