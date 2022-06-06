@@ -28,10 +28,6 @@ type Source struct {
 	Labels                  []string                    `json:"labels"`
 	States                  []githubv4.PullRequestState `json:"states"`
 	StatusContext           string                      `json:"status_context"`
-	PageSize                int                         `json:"page_size"`
-	MaxPRs                  int                         `json:"max_prs"`
-	SortField               string                      `json:"sort_field"`
-	SortDirection           string                      `json:"sort_direction"`
 }
 
 // Validate the source configuration.
