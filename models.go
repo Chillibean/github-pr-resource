@@ -167,7 +167,7 @@ type LabelObject struct {
 }
 
 // Parameters represents settings for request parameters
-type Parameters struct {
+type Page struct {
 	PageSize          int    `json:"page_size"`
 	MaxPRs            int    `json:"max_prs"`
 	SortField         string `json:"sort_field"`

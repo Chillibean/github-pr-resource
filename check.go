@@ -20,8 +20,8 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 		filterStates = request.Source.States
 	}
 
-	uncheckedParameters := request.Parameters
-	var checkedParameters Parameters
+	uncheckedParameters := request.Page
+	var checkedParameters Page
 	if &uncheckedParameters != nil {
 		checkedParameters = SetPaginationParameters(uncheckedParameters)
 	}
@@ -205,8 +205,8 @@ func IsInsidePath(parent, child string) bool {
 	return strings.HasPrefix(child, parentWithTrailingSlash)
 }
 
-func SetPaginationParameters(p Parameters) Parameters {
-	var outputParameters Parameters
+func SetPaginationParameters(p Page) Page {
+	var outputParameters Page
 
 	if p.MaxPRs == 0 {
 		outputParameters.MaxPRs = 200
@@ -281,7 +281,7 @@ func SetPaginationParameters(p Parameters) Parameters {
 type CheckRequest struct {
 	Source     Source     `json:"source"`
 	Version    Version    `json:"version"`
-	Parameters Parameters `json:"parameters"`
+	Page       Page       `json:"page"`
 }
 
 // CheckResponse ...

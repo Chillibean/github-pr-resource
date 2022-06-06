@@ -22,7 +22,7 @@ import (
 // Github for testing purposes.
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_github.go . Github
 type Github interface {
-	ListPullRequests([]githubv4.PullRequestState, Parameters) ([]*PullRequest, error)
+	ListPullRequests([]githubv4.PullRequestState, Page) ([]*PullRequest, error)
 	ListModifiedFiles(int) ([]string, error)
 	PostComment(string, string) error
 	GetPullRequest(string, string) (*PullRequest, error)
@@ -102,14 +102,7 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 }
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
-func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p Parameters) ([]*PullRequest, error) {
-	// log.Println("ListPullRequests being run from gtihub.go with parameters below:")
-	// maxAttempts := p.MaxRetries
-	// delayBetweenPages := p.DelayBetweenPages
-	// maxPRs := p.MaxPRs
-	// perPage := p.PageSize
-	// orderField := p.SortField
-	// orderDirection := p.SortDirection
+func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p Page) ([]*PullRequest, error) {
 
 	var query struct {
 		Repository struct {
@@ -163,7 +156,9 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 
 	var response []*PullRequest
 
-	log.Printf("Retrieving last %d PRs (%d per page)", p.MaxPRs, p.PageSize)
+	log.Printf("Sorting PRs by %s in %s order",  p.SortField, p.SortDirection)
+	log.Printf("Retrieving %d PRs (%d per page)", p.MaxPRs, p.PageSize)
+	log.Printf("Will wait %dms between pages and retry failures upto %d times", p.DelayBetweenPages, p.MaxRetries)
 	maxPages := p.MaxPRs / p.PageSize
 
 	page := 0
