@@ -210,9 +210,9 @@ func SetPaginationParameters(p Page) Page {
 
 	if p.MaxPRs == 0 {
 		outputParameters.MaxPRs = 200
-	} else if p.MaxPRs > 500 {
-		outputParameters.MaxPRs = 500
-		fmt.Println("max max_prs value exceeded, using max value 500")
+	} else if p.MaxPRs > 2000 {
+		outputParameters.MaxPRs = 2000
+		fmt.Println("max max_prs value exceeded, using max value 2000")
 	} else {
 		outputParameters.MaxPRs = p.MaxPRs
 	}
