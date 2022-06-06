@@ -30,7 +30,7 @@ func TestCheck(t *testing.T) {
 	tests := []struct {
 		description  string
 		source       resource.Source
-		parameters   resource.Parameters
+		parameters   resource.Page
 		version      resource.Version
 		files        [][]string
 		pullRequests []*resource.PullRequest
@@ -306,7 +306,7 @@ func TestCheck(t *testing.T) {
 				github.ListModifiedFilesReturnsOnCall(i, file, nil)
 			}
 
-			input := resource.CheckRequest{Source: tc.source, Version: tc.version, Parameters: tc.parameters}
+			input := resource.CheckRequest{Source: tc.source, Version: tc.version, Page: tc.parameters}
 			output, err := resource.Check(input, github)
 
 			if assert.NoError(t, err) {
@@ -575,13 +575,13 @@ func TestIsInsidePath(t *testing.T) {
 func TestSetPaginationParameters(t *testing.T) {
 	tests := []struct {
 		description  string
-		inputParameters   resource.Parameters
-		expected     resource.Parameters
+		inputParameters   resource.Page
+		expected     resource.Page
 	}{
 		{
 			description: "sets defaults if no input given",
-			inputParameters: resource.Parameters{},
-			expected: resource.Parameters{
+			inputParameters: resource.Page{},
+			expected: resource.Page{
 				PageSize          : 50,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
@@ -593,7 +593,7 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets values if specified",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				PageSize: 10,
 				MaxPRs: 40,
 				SortField: "CREATED_AT",
@@ -601,7 +601,7 @@ func TestSetPaginationParameters(t *testing.T) {
 				MaxRetries: 2,
 				DelayBetweenPages: 7000,
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 10,
 				MaxPRs            : 40,
 				SortField         : "CREATED_AT",
@@ -613,12 +613,12 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets max_prs to default if exceeds limit",
-			inputParameters: resource.Parameters{
-				MaxPRs:   501,
+			inputParameters: resource.Page{
+				MaxPRs:   2001,
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 50,
-				MaxPRs            : 500,
+				MaxPRs            : 2000,
 				SortField         : "UPDATED_AT",
 				SortDirection     : "DESC",
 				MaxRetries        : 4,
@@ -628,11 +628,11 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets page_size to max_pr if page_size exceeds max_prs",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				MaxPRs:   10,
 				PageSize:   20,
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 10,
 				MaxPRs            : 10,
 				SortField         : "UPDATED_AT",
@@ -644,10 +644,10 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "does not set page_size to zero if max_pr omitted",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				PageSize:   20,
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 20,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
@@ -660,10 +660,10 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets default sort_field if column not valid",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				SortField:   "ZZZ_WRONG_FIELD",
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 50,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
@@ -675,10 +675,10 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets default sort_direction if invalid value provided",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				SortDirection:   "INVALID_SORT",
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 50,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
@@ -690,10 +690,10 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets limit on  max_retries if max value exceeded",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				MaxRetries:   11,
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 50,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
@@ -705,10 +705,10 @@ func TestSetPaginationParameters(t *testing.T) {
 
 		{
 			description: "sets limit on delay_between_pages if max value exceeded",
-			inputParameters: resource.Parameters{
+			inputParameters: resource.Page{
 				DelayBetweenPages:   10001,
 			},
-			expected: resource.Parameters{
+			expected: resource.Page{
 				PageSize          : 50,
 				MaxPRs            : 200,
 				SortField         : "UPDATED_AT",
