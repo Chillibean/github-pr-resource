@@ -32,10 +32,11 @@ example
 ```
 {
     "source": {
-        "repository": "<<repository_name>>",
-        "access_token": "<<place_your_github_path_here>>",
-        "status_context": "concourse-ci/status"
-    }
+        "repository": "<<repository_name>>", 
+        "access_token": "<<place_your_github_path_here>>", 
+        "status_context": "concourse-ci/status",
+        "states": ["OPEN","MERGED"]
+    } 
 }
 ```
 
