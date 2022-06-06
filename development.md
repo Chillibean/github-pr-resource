@@ -32,13 +32,32 @@ example
 ```
 {
     "source": {
-        "page_size": "25",
         "repository": "<<repository_name>>",
         "access_token": "<<place_your_github_path_here>>",
         "status_context": "concourse-ci/status"
     }
 }
 ```
+
+to add optional parameters to your query:
+```
+{
+    "source": {
+        "repository": "<<repository_name>>",
+        "access_token": "<<place_your_github_path_here>>",
+        "status_context": "concourse-ci/status"
+    },
+    "page" {
+        "sort_field": "UPDATED_AT",
+        "sort_direction": "ASC",
+        "max_prs": 600,
+        "per_size": 25,
+        "delay_between_pages": 1000,
+        "max_retries": 3
+    }
+}
+```
+
 
 ## Publishing resource image to Docker Hub
 
