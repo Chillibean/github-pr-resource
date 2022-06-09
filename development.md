@@ -52,7 +52,7 @@ to add optional parameters to your query:
         "sort_field": "UPDATED_AT",
         "sort_direction": "ASC",
         "max_prs": 600,
-        "per_size": 25,
+        "page_size": 25,
         "delay_between_pages": 1000,
         "max_retries": 3
     }
