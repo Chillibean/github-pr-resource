@@ -38,8 +38,10 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 
 	uncheckedParameters := request.Page
 	var checkedParameters Page
+	var err error
+
 	if &uncheckedParameters != nil {
-		checkedParameters = SetPaginationParameters(uncheckedParameters)
+		checkedParameters, err = SetPaginationParameters(uncheckedParameters)
 	}
 
 	pulls, err := manager.ListPullRequests(filterStates, checkedParameters)
@@ -268,11 +270,13 @@ func IsInsidePath(parent, child string) bool {
 	return strings.HasPrefix(child, parentWithTrailingSlash)
 }
 
-func SetPaginationParameters(p Page) Page {
+func SetPaginationParameters(p Page) (Page, error) {
 	var outputParameters Page
+	var pageError error
 
-	if p.MaxPRs == 0 {
-		outputParameters.MaxPRs = 200
+
+	if p.MaxPRs <= 0 {
+		outputParameters.MaxPRs = 100
 	} else if p.MaxPRs > 2000 {
 		outputParameters.MaxPRs = 2000
 		fmt.Println("max max_prs value exceeded, using max value 2000")
@@ -282,9 +286,9 @@ func SetPaginationParameters(p Page) Page {
 
 	if p.PageSize == 0 {
 		outputParameters.PageSize = 50
-	} else if p.PageSize > 200 {
-		outputParameters.PageSize = 200
-		fmt.Println("Max page_size exceeded, using max value 200")
+	} else if p.PageSize > 100 {
+		outputParameters.PageSize = 100
+		fmt.Println("Max page_size exceeded, using max value 100")
 	} else if p.PageSize > outputParameters.MaxPRs {
 		outputParameters.PageSize = outputParameters.MaxPRs
 	} else {
@@ -294,18 +298,12 @@ func SetPaginationParameters(p Page) Page {
 
 	if p.MaxRetries == 0 {
 		outputParameters.MaxRetries = 4
-	} else if p.MaxRetries > 10 {
-		outputParameters.MaxRetries = 10
-		fmt.Println("max max_retries value exceeded, using max value 10")
 	} else {
 		outputParameters.MaxRetries = p.MaxRetries
 	}
 
 	if p.DelayBetweenPages == 0 {
 		outputParameters.DelayBetweenPages = 500
-	} else if p.DelayBetweenPages > 10000 {
-		outputParameters.DelayBetweenPages = 10000
-		fmt.Println("max delay_between_pages value exceeded, using max value 10,000ms")
 	} else {
 		outputParameters.DelayBetweenPages = p.DelayBetweenPages
 	}
@@ -320,8 +318,7 @@ func SetPaginationParameters(p Page) Page {
 	case "":
 		outputParameters.SortField = "UPDATED_AT"
 	default:
-		outputParameters.SortField = "UPDATED_AT"
-		fmt.Printf("sort_field '%s' not valid, using default value 'UPDATED_AT' \n", p.SortField)
+		pageError = fmt.Errorf("sort_field '%s' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'", p.SortField)
 	}
 
 	switch p.SortDirection {
@@ -332,11 +329,14 @@ func SetPaginationParameters(p Page) Page {
 	case "":
 		outputParameters.SortDirection = "DESC"
 	default:
-		outputParameters.SortDirection = "DESC"
-		fmt.Printf("sort_direction '%s' not valid, using default value 'DESC' \n", p.SortDirection)
+		pageError = fmt.Errorf("sort_dir '%s' not valid, please choose one of 'ASC' or 'DESC'", p.SortDirection)
 	}
 
-	return outputParameters
+	if pageError != nil {
+		return Page{}, pageError
+	}
+
+	return outputParameters, nil
 
 }
 

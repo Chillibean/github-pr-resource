@@ -583,7 +583,7 @@ func TestSetPaginationParameters(t *testing.T) {
 			inputParameters: resource.Page{},
 			expected: resource.Page{
 				PageSize          : 50,
-				MaxPRs            : 200,
+				MaxPRs            : 100,
 				SortField         : "UPDATED_AT",
 				SortDirection     : "DESC",
 				MaxRetries        : 4,
@@ -649,80 +649,49 @@ func TestSetPaginationParameters(t *testing.T) {
 			},
 			expected: resource.Page{
 				PageSize          : 20,
-				MaxPRs            : 200,
+				MaxPRs            : 100,
 				SortField         : "UPDATED_AT",
 				SortDirection     : "DESC",
 				MaxRetries        : 4,
 				DelayBetweenPages : 500,
-			},
-		},
-
-
-		{
-			description: "sets default sort_field if column not valid",
-			inputParameters: resource.Page{
-				SortField:   "ZZZ_WRONG_FIELD",
-			},
-			expected: resource.Page{
-				PageSize          : 50,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
-			},
-		},
-
-		{
-			description: "sets default sort_direction if invalid value provided",
-			inputParameters: resource.Page{
-				SortDirection:   "INVALID_SORT",
-			},
-			expected: resource.Page{
-				PageSize          : 50,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
-			},
-		},
-
-		{
-			description: "sets limit on  max_retries if max value exceeded",
-			inputParameters: resource.Page{
-				MaxRetries:   11,
-			},
-			expected: resource.Page{
-				PageSize          : 50,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 10,
-				DelayBetweenPages : 500,
-			},
-		},
-
-		{
-			description: "sets limit on delay_between_pages if max value exceeded",
-			inputParameters: resource.Page{
-				DelayBetweenPages:   10001,
-			},
-			expected: resource.Page{
-				PageSize          : 50,
-				MaxPRs            : 200,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 10000,
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			got := resource.SetPaginationParameters(tc.inputParameters)
+			got, _ := resource.SetPaginationParameters(tc.inputParameters)
 			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestSetPaginationParametersErrors(t *testing.T) {
+	tests := []struct {
+		description       string
+		inputParameters   resource.Page
+		expectedErrorMsg  string
+	}{
+		{
+			description: "throws error if sort_field is invalid",
+			inputParameters: resource.Page{
+				SortField:   "_INVALID_SORT_FIELD",
+			},
+			expectedErrorMsg: "sort_field '_INVALID_SORT_FIELD' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'",
+		},
+		{
+			description: "throws error if sort_direction is invalid",
+			inputParameters: resource.Page{
+				SortDirection:   "_INVALID_SORT_DIR",
+			},
+			expectedErrorMsg: "sort_dir '_INVALID_SORT_DIR' not valid, please choose one of 'ASC' or 'DESC'",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := resource.SetPaginationParameters(tc.inputParameters)
+			assert.EqualErrorf(t, err, tc.expectedErrorMsg, "Error should be: %v, got: %v", tc.expectedErrorMsg, err)
 		})
 	}
 }
