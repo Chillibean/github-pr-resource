@@ -33,7 +33,7 @@ example
 {
     "source": {
         "repository": "<<repository_name>>", 
-        "access_token": "<<place_your_github_path_here>>", 
+        "access_token": "<<place_your_github_pat_here>>", 
         "status_context": "concourse-ci/status",
         "states": ["OPEN","MERGED"]
     } 
@@ -45,10 +45,10 @@ to add optional parameters to your query:
 {
     "source": {
         "repository": "<<repository_name>>",
-        "access_token": "<<place_your_github_path_here>>",
+        "access_token": "<<place_your_github_pat_here>>",
         "status_context": "concourse-ci/status"
     },
-    "page" {
+    "page": {
         "sort_field": "UPDATED_AT",
         "sort_direction": "ASC",
         "max_prs": 600,
