@@ -36,15 +36,7 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 		filterStates = request.Source.States
 	}
 
-	uncheckedParameters := request.Page
-	var checkedParameters Page
-	var err error
-
-	if &uncheckedParameters != nil {
-		checkedParameters, err = SetPaginationParameters(uncheckedParameters)
-	}
-
-	pulls, err := manager.ListPullRequests(filterStates, checkedParameters)
+	pulls, err := manager.ListPullRequests(filterStates, request.Page)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last commits: %s", err)
@@ -270,75 +262,6 @@ func IsInsidePath(parent, child string) bool {
 	return strings.HasPrefix(child, parentWithTrailingSlash)
 }
 
-func SetPaginationParameters(p Page) (Page, error) {
-	var outputParameters Page
-	var pageError error
-
-
-	if p.MaxPRs <= 0 {
-		outputParameters.MaxPRs = 100
-	} else if p.MaxPRs > 2000 {
-		outputParameters.MaxPRs = 2000
-		fmt.Println("max max_prs value exceeded, using max value 2000")
-	} else {
-		outputParameters.MaxPRs = p.MaxPRs
-	}
-
-	if p.PageSize == 0 {
-		outputParameters.PageSize = 50
-	} else if p.PageSize > 100 {
-		outputParameters.PageSize = 100
-		fmt.Println("Max page_size exceeded, using max value 100")
-	} else if p.PageSize > outputParameters.MaxPRs {
-		outputParameters.PageSize = outputParameters.MaxPRs
-	} else {
-		outputParameters.PageSize = p.PageSize
-	}
-
-
-	if p.MaxRetries == 0 {
-		outputParameters.MaxRetries = 4
-	} else {
-		outputParameters.MaxRetries = p.MaxRetries
-	}
-
-	if p.DelayBetweenPages == 0 {
-		outputParameters.DelayBetweenPages = 500
-	} else {
-		outputParameters.DelayBetweenPages = p.DelayBetweenPages
-	}
-
-	switch p.SortField {
-	case "UPDATED_AT":
-		outputParameters.SortField = "UPDATED_AT"
-	case "CREATED_AT":
-		outputParameters.SortField = "CREATED_AT"
-	case "COMMENTS":
-		outputParameters.SortField = "COMMENTS"
-	case "":
-		outputParameters.SortField = "UPDATED_AT"
-	default:
-		pageError = fmt.Errorf("sort_field '%s' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'", p.SortField)
-	}
-
-	switch p.SortDirection {
-	case "DESC":
-		outputParameters.SortDirection = "DESC"
-	case "ASC":
-		outputParameters.SortDirection = "ASC"
-	case "":
-		outputParameters.SortDirection = "DESC"
-	default:
-		pageError = fmt.Errorf("sort_dir '%s' not valid, please choose one of 'ASC' or 'DESC'", p.SortDirection)
-	}
-
-	if pageError != nil {
-		return Page{}, pageError
-	}
-
-	return outputParameters, nil
-
-}
 
 // CheckRequest ...
 type CheckRequest struct {

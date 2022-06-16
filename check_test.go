@@ -660,7 +660,7 @@ func TestSetPaginationParameters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			got, _ := resource.SetPaginationParameters(tc.inputParameters)
+			got, _ := resource.ValidatePageParameters(tc.inputParameters)
 			assert.Equal(t, tc.expected, got)
 		})
 	}
@@ -690,7 +690,7 @@ func TestSetPaginationParametersErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			_, err := resource.SetPaginationParameters(tc.inputParameters)
+			_, err := resource.ValidatePageParameters(tc.inputParameters)
 			assert.EqualErrorf(t, err, tc.expectedErrorMsg, "Error should be: %v, got: %v", tc.expectedErrorMsg, err)
 		})
 	}
