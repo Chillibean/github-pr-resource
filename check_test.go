@@ -572,7 +572,7 @@ func TestIsInsidePath(t *testing.T) {
 	}
 }
 
-func TestSetPaginationParameters(t *testing.T) {
+func TestValidatePageParameters(t *testing.T) {
 	tests := []struct {
 		description  string
 		inputParameters   resource.Page
@@ -666,7 +666,7 @@ func TestSetPaginationParameters(t *testing.T) {
 	}
 }
 
-func TestSetPaginationParametersErrors(t *testing.T) {
+func TestValidatePageParametersErrors(t *testing.T) {
 	tests := []struct {
 		description       string
 		inputParameters   resource.Page
