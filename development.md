@@ -59,7 +59,6 @@ to add optional parameters to your query:
 }
 ```
 
-
 ## Publishing resource image to Docker Hub
 
 

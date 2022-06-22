@@ -206,7 +206,6 @@ func ValidatePageParameters(p Page) (Page, error) {
 		outputParameters.PageSize = p.PageSize
 	}
 
-
 	if p.MaxRetries == 0 {
 		outputParameters.MaxRetries = 4
 	} else {
@@ -248,5 +247,4 @@ func ValidatePageParameters(p Page) (Page, error) {
 	}
 
 	return outputParameters, nil
-
 }

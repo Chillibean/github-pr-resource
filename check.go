@@ -262,7 +262,6 @@ func IsInsidePath(parent, child string) bool {
 	return strings.HasPrefix(child, parentWithTrailingSlash)
 }
 
-
 // CheckRequest ...
 type CheckRequest struct {
 	Source     Source     `json:"source"`

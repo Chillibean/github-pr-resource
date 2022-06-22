@@ -313,7 +313,6 @@ func TestCheck(t *testing.T) {
 				assert.Equal(t, tc.expected, output)
 			}
 			assert.Equal(t, 1, github.ListPullRequestsCallCount())
-
 		})
 	}
 }
@@ -590,7 +589,6 @@ func TestValidatePageParameters(t *testing.T) {
 				DelayBetweenPages : 500,
 			},
 		},
-
 		{
 			description: "sets values if specified",
 			inputParameters: resource.Page{
@@ -610,7 +608,6 @@ func TestValidatePageParameters(t *testing.T) {
 				DelayBetweenPages : 7000,
 			},
 		},
-
 		{
 			description: "sets max_prs to default if exceeds limit",
 			inputParameters: resource.Page{
@@ -625,7 +622,6 @@ func TestValidatePageParameters(t *testing.T) {
 				DelayBetweenPages : 500,
 			},
 		},
-
 		{
 			description: "sets page_size to max_pr if page_size exceeds max_prs",
 			inputParameters: resource.Page{
@@ -641,7 +637,6 @@ func TestValidatePageParameters(t *testing.T) {
 				DelayBetweenPages : 500,
 			},
 		},
-
 		{
 			description: "does not set page_size to zero if max_pr omitted",
 			inputParameters: resource.Page{
