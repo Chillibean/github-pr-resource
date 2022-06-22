@@ -173,6 +173,9 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 					log.Printf("Attempt %d of %d failed, retrying", attempt, p.MaxRetries)
 					log.Printf("check failed: %s", err)
 					attempt++
+
+					// Sleep - github API does not like fast querying
+					time.Sleep(time.Duration(p.DelayBetweenPages) * time.Millisecond)
 				} else {
 					return nil, err
 				}
