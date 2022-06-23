@@ -5,12 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v28/github"
 	"github.com/shurcooL/githubv4"
@@ -101,6 +103,13 @@ func NewGithubClient(s *Source) (*GithubClient, error) {
 
 // ListPullRequests gets the last commit on all pull requests with the matching state.
 func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([]*PullRequest, error) {
+	maxAttempts := 4
+	delayBetweenPages := 500
+	maxPRs := 200
+	perPage := 50
+	orderField := "UPDATED_AT"
+	orderDirection := "DESC"
+
 	var query struct {
 		Repository struct {
 			PullRequests struct {
@@ -133,7 +142,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 					EndCursor   githubv4.String
 					HasNextPage bool
 				}
-			} `graphql:"pullRequests(first:$prFirst,states:$prStates,after:$prCursor)"`
+			} `graphql:"pullRequests(first:$prFirst,states:$prStates,after:$prCursor,orderBy:{field:$orderField,direction:$orderDirection})"`
 		} `graphql:"repository(owner:$repositoryOwner,name:$repositoryName)"`
 	}
 
@@ -144,15 +153,36 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 		"prFirst":           githubv4.Int(100),
 		"prStates":          prStates,
 		"prCursor":          (*githubv4.String)(nil),
+		"orderField":        githubv4.IssueOrderField(orderField),
+		"orderDirection":    githubv4.OrderDirection(orderDirection),
 		"commitsLast":       githubv4.Int(1),
 		"prReviewStates":    []githubv4.PullRequestReviewState{githubv4.PullRequestReviewStateApproved},
-		"labelsFirst":       githubv4.Int(100),
+		"labelsFirst":       githubv4.Int(10),
 	}
 
 	var response []*PullRequest
+
+	
+	log.Printf("Retrieving last %d PRs (%d per page)", maxPRs, perPage)
+	maxPages := maxPRs / perPage
+	page := 0
+
 	for {
-		if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
-			return nil, err
+		page++
+		log.Printf("Page %d of %d", page, maxPages)
+		attempt := 1
+		for { 
+			if err := m.V4.Query(context.TODO(), &query, vars); err != nil {
+				if attempt <= maxAttempts {
+					log.Printf("Attempt %d of %d failed, retrying", attempt, maxAttempts)
+					log.Printf("check failed: %s", err)
+					attempt++
+				} else {
+					return nil, err
+				}
+			} else {
+				break
+			}
 		}
 		for _, p := range query.Repository.PullRequests.Edges {
 			labels := make([]LabelObject, len(p.Node.Labels.Edges))
@@ -170,10 +200,13 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState) ([
 				})
 			}
 		}
-		if !query.Repository.PullRequests.PageInfo.HasNextPage {
+		if !query.Repository.PullRequests.PageInfo.HasNextPage || page >= maxPages {
 			break
 		}
 		vars["prCursor"] = query.Repository.PullRequests.PageInfo.EndCursor
+
+		// Sleep - github API does not like fast querying
+		time.Sleep(time.Duration(delayBetweenPages) * time.Millisecond)
 	}
 	return response, nil
 }
