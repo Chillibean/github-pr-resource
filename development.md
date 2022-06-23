@@ -32,8 +32,8 @@ example
 ```
 {
     "source": {
-        "repository": "<<repository_name>>", 
-        "access_token": "<<place_your_github_pat_here>>", 
+        "repository": "<<repository_name>>",
+        "access_token": "<<place_your_github_pat_here>>",
         "status_context": "concourse-ci/status",
         "states": ["OPEN","MERGED"]
     } 
