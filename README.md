@@ -46,6 +46,16 @@ Notes:
  for webhook token configuration.
  - When using `required_review_approvals`, you may also want to enable GitHub's branch protection rules to [dismiss stale pull request approvals when new commits are pushed](https://help.github.com/en/articles/enabling-required-reviews-for-pull-requests).
 
+## Page Configuration
+| Parameter                     | Required   | Example                            | Description                                                                                                                                                                                                                                                                                  |
+| ----------------------------- | ---------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sort_field`                  | No         | `UPDATED_AT`                       | Github field to sort by. One of 'UPDATED_AT', 'CREATED_AT', 'COMMENTS'. Default value 'UPDATED_AT'
+| `sort_direction`              | No         | `ASC`                              | Whether to sort in ascending or descending order. E.g. 'ASC' for 'CREATED_AT' field will start with the oldest pull request. Default value 'DESC'
+| `max_prs`                     | No         | `250`                              | Maximum number of pull requests to fetch. Max value 2000, default value 200
+| `page_size`                   | No         | `25`                               | Number of pull requests to fetch on one page, a higher number runs a greater risk of causing Github API to timeout. Max value 100, default value 50
+| `delay_between_pages`         | No         | `2000`                             | Number of milliseconds between each page request to the Github API. A higher number runs a greater risk of causing Github API to timeout. Default value 500
+| `max_retries`                 | No         | `3`                                | Number of times to re-attempt the API request if it fails. Default value 4
+
 ## Behaviour
 
 #### `check`

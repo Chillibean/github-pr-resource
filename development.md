@@ -1,6 +1,6 @@
 ## Development
 
-To start run 
+To start run
 ```
 docker-compose up -d
 ```
@@ -32,11 +32,30 @@ example
 ```
 {
     "source": {
-        "repository": "<<repository_name>>", 
-        "access_token": "<<place_your_github_path_here>>", 
+        "repository": "<<repository_name>>",
+        "access_token": "<<place_your_github_pat_here>>",
         "status_context": "concourse-ci/status",
         "states": ["OPEN","MERGED"]
     } 
+}
+```
+
+to add optional parameters to your query:
+```
+{
+    "source": {
+        "repository": "<<repository_name>>",
+        "access_token": "<<place_your_github_pat_here>>",
+        "status_context": "concourse-ci/status"
+    },
+    "page": {
+        "sort_field": "UPDATED_AT",
+        "sort_direction": "ASC",
+        "max_prs": 600,
+        "page_size": 25,
+        "delay_between_pages": 1000,
+        "max_retries": 3
+    }
 }
 ```
 

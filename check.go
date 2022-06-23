@@ -36,7 +36,8 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 		filterStates = request.Source.States
 	}
 
-	pulls, err := manager.ListPullRequests(filterStates)
+	pulls, err := manager.ListPullRequests(filterStates, request.Page)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last commits: %s", err)
 	}
@@ -263,8 +264,9 @@ func IsInsidePath(parent, child string) bool {
 
 // CheckRequest ...
 type CheckRequest struct {
-	Source  Source  `json:"source"`
-	Version Version `json:"version"`
+	Source     Source     `json:"source"`
+	Version    Version    `json:"version"`
+	Page       Page       `json:"page"`
 }
 
 // CheckResponse ...

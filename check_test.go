@@ -30,6 +30,7 @@ func TestCheck(t *testing.T) {
 	tests := []struct {
 		description  string
 		source       resource.Source
+		parameters   resource.Page
 		version      resource.Version
 		files        [][]string
 		pullRequests []*resource.PullRequest
@@ -305,7 +306,7 @@ func TestCheck(t *testing.T) {
 				github.ListModifiedFilesReturnsOnCall(i, file, nil)
 			}
 
-			input := resource.CheckRequest{Source: tc.source, Version: tc.version}
+			input := resource.CheckRequest{Source: tc.source, Version: tc.version, Page: tc.parameters}
 			output, err := resource.Check(input, github)
 
 			if assert.NoError(t, err) {
@@ -566,6 +567,126 @@ func TestIsInsidePath(t *testing.T) {
 					t.Errorf("Expected \"%s\" to not be inside \"%s\"", expectedNotChild, tc.parent)
 				}
 			}
+		})
+	}
+}
+
+func TestValidatePageParameters(t *testing.T) {
+	tests := []struct {
+		description  string
+		inputParameters   resource.Page
+		expected     resource.Page
+	}{
+		{
+			description: "sets defaults if no input given",
+			inputParameters: resource.Page{},
+			expected: resource.Page{
+				PageSize          : 50,
+				MaxPRs            : 100,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+		{
+			description: "sets values if specified",
+			inputParameters: resource.Page{
+				PageSize: 10,
+				MaxPRs: 40,
+				SortField: "CREATED_AT",
+				SortDirection: "ASC",
+				MaxRetries: 2,
+				DelayBetweenPages: 7000,
+			},
+			expected: resource.Page{
+				PageSize          : 10,
+				MaxPRs            : 40,
+				SortField         : "CREATED_AT",
+				SortDirection     : "ASC",
+				MaxRetries        : 2,
+				DelayBetweenPages : 7000,
+			},
+		},
+		{
+			description: "sets max_prs to default if exceeds limit",
+			inputParameters: resource.Page{
+				MaxPRs:   2001,
+			},
+			expected: resource.Page{
+				PageSize          : 50,
+				MaxPRs            : 2000,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+		{
+			description: "sets page_size to max_pr if page_size exceeds max_prs",
+			inputParameters: resource.Page{
+				MaxPRs:   10,
+				PageSize:   20,
+			},
+			expected: resource.Page{
+				PageSize          : 10,
+				MaxPRs            : 10,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+		{
+			description: "does not set page_size to zero if max_pr omitted",
+			inputParameters: resource.Page{
+				PageSize:   20,
+			},
+			expected: resource.Page{
+				PageSize          : 20,
+				MaxPRs            : 100,
+				SortField         : "UPDATED_AT",
+				SortDirection     : "DESC",
+				MaxRetries        : 4,
+				DelayBetweenPages : 500,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			got, _ := resource.ValidatePageParameters(tc.inputParameters)
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestValidatePageParametersErrors(t *testing.T) {
+	tests := []struct {
+		description       string
+		inputParameters   resource.Page
+		expectedErrorMsg  string
+	}{
+		{
+			description: "throws error if sort_field is invalid",
+			inputParameters: resource.Page{
+				SortField:   "_INVALID_SORT_FIELD",
+			},
+			expectedErrorMsg: "sort_field '_INVALID_SORT_FIELD' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'",
+		},
+		{
+			description: "throws error if sort_direction is invalid",
+			inputParameters: resource.Page{
+				SortDirection:   "_INVALID_SORT_DIR",
+			},
+			expectedErrorMsg: "sort_dir '_INVALID_SORT_DIR' not valid, please choose one of 'ASC' or 'DESC'",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.description, func(t *testing.T) {
+			_, err := resource.ValidatePageParameters(tc.inputParameters)
+			assert.EqualErrorf(t, err, tc.expectedErrorMsg, "Error should be: %v, got: %v", tc.expectedErrorMsg, err)
 		})
 	}
 }
