@@ -14,7 +14,7 @@ import (
 
 func LogSkipped(p *PullRequest, name string, additional []string) {
 	PrintLog(fmt.Sprintf("%d skipped, reason: %s", p.Number, name))
-	
+
 	for _, a := range additional {
 		PrintLog(a)
 	}
@@ -36,7 +36,7 @@ func Check(request CheckRequest, manager Github) (CheckResponse, error) {
 		filterStates = request.Source.States
 	}
 
-	pulls, err := manager.ListPullRequests(filterStates, request.Page)
+	pulls, err := manager.ListPullRequests(filterStates, request.Source.Page)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last commits: %s", err)
@@ -61,7 +61,7 @@ Loop:
 
 		// [ci skip]/[skip ci] in Commit message
 		if !disableSkipCI && ContainsSkipCI(p.Tip.Message) {
-			LogSkipped(p, "ci skip]/[skip ci] in Commit message",[]string{
+			LogSkipped(p, "ci skip]/[skip ci] in Commit message", []string{
 				fmt.Sprint("disableSkipCI:", disableSkipCI),
 				fmt.Sprint("p.Tip.Message:", p.Tip.Message)})
 			continue
@@ -88,7 +88,7 @@ Loop:
 		// Filter out commits that already have a build status
 		if request.Source.StatusContext != "" && p.HasStatus {
 			LogSkipped(p, "Filter out commits that already have a build status", []string{
-				fmt.Sprint("request.Source.StatusContext:", request.Source.StatusContext), 
+				fmt.Sprint("request.Source.StatusContext:", request.Source.StatusContext),
 				fmt.Sprint("p.HasStatus:", p.HasStatus)})
 			continue
 		}
@@ -134,7 +134,7 @@ Loop:
 		// Filter pull request if it does not have the required number of approved review(s).
 		if p.ApprovedReviewCount < request.Source.RequiredReviewApprovals {
 			LogSkipped(p, "Filter pull request if it does not have the required number of approved review(s).", []string{
-				fmt.Sprint("p.ApprovedReviewCount:", p.ApprovedReviewCount ),
+				fmt.Sprint("p.ApprovedReviewCount:", p.ApprovedReviewCount),
 				fmt.Sprint("request.Source.RequiredReviewApprovals:", request.Source.RequiredReviewApprovals)})
 			continue
 		}
@@ -264,9 +264,8 @@ func IsInsidePath(parent, child string) bool {
 
 // CheckRequest ...
 type CheckRequest struct {
-	Source     Source     `json:"source"`
-	Version    Version    `json:"version"`
-	Page       Page       `json:"page"`
+	Source  Source  `json:"source"`
+	Version Version `json:"version"`
 }
 
 // CheckResponse ...
