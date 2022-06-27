@@ -30,7 +30,6 @@ func TestCheck(t *testing.T) {
 	tests := []struct {
 		description  string
 		source       resource.Source
-		parameters   resource.Page
 		version      resource.Version
 		files        [][]string
 		pullRequests []*resource.PullRequest
@@ -306,7 +305,7 @@ func TestCheck(t *testing.T) {
 				github.ListModifiedFilesReturnsOnCall(i, file, nil)
 			}
 
-			input := resource.CheckRequest{Source: tc.source, Version: tc.version, Page: tc.parameters}
+			input := resource.CheckRequest{Source: tc.source, Version: tc.version}
 			output, err := resource.Check(input, github)
 
 			if assert.NoError(t, err) {
@@ -571,113 +570,130 @@ func TestIsInsidePath(t *testing.T) {
 	}
 }
 
-func TestValidatePageParameters(t *testing.T) {
+func TestValidate(t *testing.T) {
 	tests := []struct {
-		description  string
-		inputParameters   resource.Page
-		expected     resource.Page
+		description     string
+		inputParameters resource.Page
+		expected        resource.Page
 	}{
 		{
-			description: "sets defaults if no input given",
+			description:     "sets defaults if no input given",
 			inputParameters: resource.Page{},
 			expected: resource.Page{
-				PageSize          : 50,
-				MaxPRs            : 100,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
+				PageSize:          50,
+				MaxPRs:            100,
+				SortField:         "UPDATED_AT",
+				SortDirection:     "DESC",
+				MaxRetries:        4,
+				DelayBetweenPages: 500,
 			},
 		},
 		{
 			description: "sets values if specified",
 			inputParameters: resource.Page{
-				PageSize: 10,
-				MaxPRs: 40,
-				SortField: "CREATED_AT",
-				SortDirection: "ASC",
-				MaxRetries: 2,
+				PageSize:          10,
+				MaxPRs:            40,
+				SortField:         "CREATED_AT",
+				SortDirection:     "ASC",
+				MaxRetries:        2,
 				DelayBetweenPages: 7000,
 			},
 			expected: resource.Page{
-				PageSize          : 10,
-				MaxPRs            : 40,
-				SortField         : "CREATED_AT",
-				SortDirection     : "ASC",
-				MaxRetries        : 2,
-				DelayBetweenPages : 7000,
+				PageSize:          10,
+				MaxPRs:            40,
+				SortField:         "CREATED_AT",
+				SortDirection:     "ASC",
+				MaxRetries:        2,
+				DelayBetweenPages: 7000,
 			},
 		},
 		{
 			description: "sets max_prs to default if exceeds limit",
 			inputParameters: resource.Page{
-				MaxPRs:   2001,
+				MaxPRs: 2001,
 			},
 			expected: resource.Page{
-				PageSize          : 50,
-				MaxPRs            : 2000,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
+				PageSize:          50,
+				MaxPRs:            2000,
+				SortField:         "UPDATED_AT",
+				SortDirection:     "DESC",
+				MaxRetries:        4,
+				DelayBetweenPages: 500,
 			},
 		},
 		{
 			description: "sets page_size to max_pr if page_size exceeds max_prs",
 			inputParameters: resource.Page{
-				MaxPRs:   10,
-				PageSize:   20,
+				MaxPRs:   200,
+				PageSize: 220,
 			},
 			expected: resource.Page{
-				PageSize          : 10,
-				MaxPRs            : 10,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
+				PageSize:          100,
+				MaxPRs:            200,
+				SortField:         "UPDATED_AT",
+				SortDirection:     "DESC",
+				MaxRetries:        4,
+				DelayBetweenPages: 500,
 			},
 		},
 		{
 			description: "does not set page_size to zero if max_pr omitted",
 			inputParameters: resource.Page{
-				PageSize:   20,
+				PageSize: 20,
 			},
 			expected: resource.Page{
-				PageSize          : 20,
-				MaxPRs            : 100,
-				SortField         : "UPDATED_AT",
-				SortDirection     : "DESC",
-				MaxRetries        : 4,
-				DelayBetweenPages : 500,
+				PageSize:          20,
+				MaxPRs:            100,
+				SortField:         "UPDATED_AT",
+				SortDirection:     "DESC",
+				MaxRetries:        4,
+				DelayBetweenPages: 500,
+			},
+		},
+		{
+			description: "sets values to default if nagative values provided",
+			inputParameters: resource.Page{
+				PageSize:          -10,
+				MaxPRs:            -300,
+				MaxRetries:        -8,
+				DelayBetweenPages: -1000,
+			},
+			expected: resource.Page{
+				PageSize:          50,
+				MaxPRs:            100,
+				SortField:         "UPDATED_AT",
+				SortDirection:     "DESC",
+				MaxRetries:        4,
+				DelayBetweenPages: 500,
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			got, _ := resource.ValidatePageParameters(tc.inputParameters)
-			assert.Equal(t, tc.expected, got)
+			tc.inputParameters.Validate()
+			assert.Equal(t, tc.expected, tc.inputParameters)
 		})
 	}
 }
 
-func TestValidatePageParametersErrors(t *testing.T) {
+func TestValidateErrors(t *testing.T) {
 	tests := []struct {
-		description       string
-		inputParameters   resource.Page
-		expectedErrorMsg  string
+		description      string
+		inputParameters  resource.Page
+		expectedErrorMsg string
 	}{
 		{
 			description: "throws error if sort_field is invalid",
 			inputParameters: resource.Page{
-				SortField:   "_INVALID_SORT_FIELD",
+				SortField: "_INVALID_SORT_FIELD",
 			},
 			expectedErrorMsg: "sort_field '_INVALID_SORT_FIELD' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'",
 		},
 		{
 			description: "throws error if sort_direction is invalid",
 			inputParameters: resource.Page{
-				SortDirection:   "_INVALID_SORT_DIR",
+				SortDirection: "_INVALID_SORT_DIR",
 			},
 			expectedErrorMsg: "sort_dir '_INVALID_SORT_DIR' not valid, please choose one of 'ASC' or 'DESC'",
 		},
@@ -685,7 +701,7 @@ func TestValidatePageParametersErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.description, func(t *testing.T) {
-			_, err := resource.ValidatePageParameters(tc.inputParameters)
+			err := tc.inputParameters.Validate()
 			assert.EqualErrorf(t, err, tc.expectedErrorMsg, "Error should be: %v, got: %v", tc.expectedErrorMsg, err)
 		})
 	}
