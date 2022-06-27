@@ -158,7 +158,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 
 	log.Printf("Sorting PRs by %s in %s order", p.SortField, p.SortDirection)
 	log.Printf("Retrieving %d PRs (%d per page)", p.MaxPRs, p.PageSize)
-	log.Printf("Will wait %dms between pages and retry failures upto %d times", p.DelayBetweenPages, p.MaxRetries)
+	log.Printf("Will wait %dms between pages and retry failures up to %d times", p.DelayBetweenPages, p.MaxRetries)
 	maxPages := p.MaxPRs / p.PageSize
 
 	page := 0
