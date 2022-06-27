@@ -39,6 +39,7 @@ Make sure to check out [#migrating](#migrating) to learn more.
 | `states`                    | No       | `["OPEN", "MERGED"]`             | The PR states to select (`OPEN`, `MERGED` or `CLOSED`). The pipeline will only trigger on pull requests matching one of the specified states. Default is ["OPEN"].                                                                                                                         |
 | `status_context`            | No       | `concourse-ci/build`             | Filter out PRs that contain the status context on their latest SHA |
 | `verbose`                   | No       | `true`                           | Show more information during `check` about PR filtering |
+| `page`                      | No       | `{ max_prs: 300, page_size: 50 }`| GitHub API query configuration - check [Page Configuration](#page-configuration) |
 
 Notes:
  - If `v3_endpoint` is set, `v4_endpoint` must also be set (and the other way around).
@@ -49,11 +50,11 @@ Notes:
 ## Page Configuration
 | Parameter                     | Required   | Example                            | Description                                                                                                                                                                                                                                                                                  |
 | ----------------------------- | ---------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sort_field`                  | No         | `UPDATED_AT`                       | Github field to sort by. One of 'UPDATED_AT', 'CREATED_AT', 'COMMENTS'. Default value 'UPDATED_AT'
+| `sort_field`                  | No         | `UPDATED_AT`                       | GitHub field to sort by. One of 'UPDATED_AT', 'CREATED_AT', 'COMMENTS'. Default value 'UPDATED_AT'
 | `sort_direction`              | No         | `ASC`                              | Whether to sort in ascending or descending order. E.g. 'ASC' for 'CREATED_AT' field will start with the oldest pull request. Default value 'DESC'
 | `max_prs`                     | No         | `250`                              | Maximum number of pull requests to fetch. Max value 2000, default value 200
-| `page_size`                   | No         | `25`                               | Number of pull requests to fetch on one page, a higher number runs a greater risk of causing Github API to timeout. Max value 100, default value 50
-| `delay_between_pages`         | No         | `2000`                             | Number of milliseconds between each page request to the Github API. A higher number runs a greater risk of causing Github API to timeout. Default value 500
+| `page_size`                   | No         | `25`                               | Number of pull requests to fetch on one page, a higher number runs a greater risk of causing GitHub API to timeout. Max value 100, default value 50
+| `delay_between_pages`         | No         | `2000`                             | Number of milliseconds between each page request to the GitHub API. A higher number runs a greater risk of causing GitHub API to timeout. Default value 500
 | `max_retries`                 | No         | `3`                                | Number of times to re-attempt the API request if it fails. Default value 4
 
 ## Behaviour
