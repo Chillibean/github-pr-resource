@@ -29,6 +29,7 @@ type Source struct {
 	Labels                  []string                    `json:"labels"`
 	States                  []githubv4.PullRequestState `json:"states"`
 	StatusContext           string                      `json:"status_context"`
+	Page                    Page                        `json:"page"`
 	Verbose                 bool                        `json:"verbose"`
 }
 
@@ -58,6 +59,10 @@ func (s *Source) Validate() error {
 	if s.Verbose {
 		os.Setenv("verbose", "true")
 	}
+	if err := s.Page.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -173,78 +178,59 @@ type LabelObject struct {
 
 // Page represents settings for request parameters
 type Page struct {
-	PageSize          int    `json:"page_size"`
-	MaxPRs            int    `json:"max_prs"`
-	SortField         string `json:"sort_field"`
-	SortDirection     string `json:"sort_direction"`
-	MaxRetries        int    `json:"max_retries"`
-	DelayBetweenPages int    `json:"delay_between_pages"`
+	PageSize          int                      `json:"page_size"`
+	MaxPRs            int                      `json:"max_prs"`
+	SortField         githubv4.IssueOrderField `json:"sort_field"`
+	SortDirection     githubv4.OrderDirection  `json:"sort_direction"`
+	MaxRetries        int                      `json:"max_retries"`
+	DelayBetweenPages int                      `json:"delay_between_pages"`
 }
 
-func ValidatePageParameters(p Page) (Page, error) {
-	var outputParameters Page
-	var pageError error
-
-
+// Validate Page configuration
+func (p *Page) Validate() error {
 	if p.MaxPRs <= 0 {
-		outputParameters.MaxPRs = 100
+		p.MaxPRs = 100
 	} else if p.MaxPRs > 2000 {
-		outputParameters.MaxPRs = 2000
-		fmt.Println("max max_prs value exceeded, using max value 2000")
-	} else {
-		outputParameters.MaxPRs = p.MaxPRs
+		p.MaxPRs = 2000
+		fmt.Println("Max max_prs value exceeded, using max value 2000")
 	}
 
-	if p.PageSize == 0 {
-		outputParameters.PageSize = 50
-	} else if p.PageSize > 100 {
-		outputParameters.PageSize = 100
+	if p.PageSize <= 0 {
+		p.PageSize = 50
+	} else if p.PageSize > p.MaxPRs {
+		p.PageSize = p.MaxPRs
+	}
+	if p.PageSize > 100 {
+		p.PageSize = 100
 		fmt.Println("Max page_size exceeded, using max value 100")
-	} else if p.PageSize > outputParameters.MaxPRs {
-		outputParameters.PageSize = outputParameters.MaxPRs
-	} else {
-		outputParameters.PageSize = p.PageSize
 	}
 
-	if p.MaxRetries == 0 {
-		outputParameters.MaxRetries = 4
-	} else {
-		outputParameters.MaxRetries = p.MaxRetries
+	if p.MaxRetries <= 0 {
+		p.MaxRetries = 4
 	}
 
-	if p.DelayBetweenPages == 0 {
-		outputParameters.DelayBetweenPages = 500
-	} else {
-		outputParameters.DelayBetweenPages = p.DelayBetweenPages
+	if p.DelayBetweenPages <= 0 {
+		p.DelayBetweenPages = 500
 	}
 
 	switch p.SortField {
-	case "UPDATED_AT":
-		outputParameters.SortField = "UPDATED_AT"
-	case "CREATED_AT":
-		outputParameters.SortField = "CREATED_AT"
-	case "COMMENTS":
-		outputParameters.SortField = "COMMENTS"
 	case "":
-		outputParameters.SortField = "UPDATED_AT"
+		p.SortField = githubv4.IssueOrderFieldUpdatedAt
+	case githubv4.IssueOrderFieldCreatedAt:
+	case githubv4.IssueOrderFieldUpdatedAt:
+	case githubv4.IssueOrderFieldComments:
 	default:
-		pageError = fmt.Errorf("sort_field '%s' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'", p.SortField)
+		return errors.New(fmt.Sprintf("sort_field '%s' not valid, please choose one of 'UPDATED_AT', 'CREATED_AT' or 'COMMENTS'", p.SortField))
 	}
 
 	switch p.SortDirection {
-	case "DESC":
-		outputParameters.SortDirection = "DESC"
-	case "ASC":
-		outputParameters.SortDirection = "ASC"
 	case "":
-		outputParameters.SortDirection = "DESC"
+		p.SortDirection = githubv4.OrderDirectionDesc
+	case githubv4.OrderDirectionAsc:
+	case githubv4.OrderDirectionDesc:
 	default:
-		pageError = fmt.Errorf("sort_dir '%s' not valid, please choose one of 'ASC' or 'DESC'", p.SortDirection)
+		return errors.New(fmt.Sprintf("sort_dir '%s' not valid, please choose one of 'ASC' or 'DESC'", p.SortDirection))
 	}
 
-	if pageError != nil {
-		return Page{}, pageError
-	}
-
-	return outputParameters, nil
+	return nil
 }
