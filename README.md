@@ -40,6 +40,7 @@ Make sure to check out [#migrating](#migrating) to learn more.
 | `status_context`            | No       | `concourse-ci/build`             | Filter out PRs that contain the status context on their latest SHA |
 | `verbose`                   | No       | `true`                           | Show more information during `check` about PR filtering |
 | `page`                      | No       | `{ max_prs: 300, page_size: 50 }`| GitHub API query configuration - check [Page Configuration](#page-configuration) |
+| `required_check_runs`       | No       | `["lint", "jest"]`               | Filter out PRs that do not have those check runs passing |
 
 Notes:
  - If `v3_endpoint` is set, `v4_endpoint` must also be set (and the other way around).
