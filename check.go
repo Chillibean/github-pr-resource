@@ -28,6 +28,7 @@ func PrintLog(msg string) {
 
 // Check (business logic)
 func Check(request CheckRequest, manager Github) (CheckResponse, error) {
+	const SUCCESS = "SUCCESS"
 	var response CheckResponse
 
 	// Filter out pull request if it does not have a filtered state
@@ -69,7 +70,7 @@ Loop:
 
 		// Filter pull request if the BaseBranch does not match the one specified in source
 		if request.Source.BaseBranch != "" && p.PullRequestObject.BaseRefName != request.Source.BaseBranch {
-			LogSkipped(p, "Filtr pull request if the BaseBranch does not match the one specified in source", []string{
+			LogSkipped(p, "Filter pull request if the BaseBranch does not match the one specified in source", []string{
 				fmt.Sprint("request.Source.BaseBranch:", request.Source.BaseBranch),
 				fmt.Sprint("p.PullRequestObject.BaseRefName:", p.PullRequestObject.BaseRefName)})
 			continue
@@ -137,6 +138,31 @@ Loop:
 				fmt.Sprint("p.ApprovedReviewCount:", p.ApprovedReviewCount),
 				fmt.Sprint("request.Source.RequiredReviewApprovals:", request.Source.RequiredReviewApprovals)})
 			continue
+		}
+
+		// Filter pull request if it does not contain all required check runs completed with success.
+		if len(request.Source.RequiredCheckRuns) > 0 {
+			checkRunPass := true
+
+		CheckRunLoop:
+			for _, requiredCheckRun := range request.Source.RequiredCheckRuns {
+				if conclusion, present := p.CheckRuns[requiredCheckRun]; present {
+					if !(conclusion == SUCCESS) {
+						checkRunPass = false
+						break CheckRunLoop
+					}
+				} else {
+					checkRunPass = false
+					break CheckRunLoop
+				}
+			}
+
+			if !checkRunPass {
+				LogSkipped(p, "Filter pull request if it does not contain all required check runs completed with success.", []string{
+					fmt.Sprint("request.Source.RequiredCheckRuns:", request.Source.RequiredCheckRuns),
+					fmt.Sprint("p.CheckRuns:", p.CheckRuns)})
+				continue Loop
+			}
 		}
 
 		// Fetch files once if paths/ignore_paths are specified.

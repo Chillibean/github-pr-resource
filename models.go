@@ -31,6 +31,7 @@ type Source struct {
 	StatusContext           string                      `json:"status_context"`
 	Page                    Page                        `json:"page"`
 	Verbose                 bool                        `json:"verbose"`
+	RequiredCheckRuns       []string                    `json:"required_check_runs"`
 }
 
 // Validate the source configuration.
@@ -107,6 +108,7 @@ type PullRequest struct {
 	ApprovedReviewCount int
 	Labels              []LabelObject
 	HasStatus           bool
+	CheckRuns           map[string]string
 }
 
 // PullRequestObject represents the GraphQL commit node.
@@ -174,6 +176,19 @@ type ChangedFileObject struct {
 // https://developer.github.com/v4/object/label
 type LabelObject struct {
 	Name string
+}
+
+// StatusCheckRollupContextObject represents the GraphQL StatusCheckRollupContext union node.
+// https://developer.github.com/v4/union/statuscheckrollupcontext
+type StatusCheckRollupContextObject struct {
+	CheckRunObject `graphql:"... on CheckRun"`
+}
+
+// CheckRunObject represents the GraphQL CheckRun node.
+// https://developer.github.com/v4/object/checkrun
+type CheckRunObject struct {
+	Conclusion string
+	Name       string
 }
 
 // Page represents settings for request parameters

@@ -119,6 +119,11 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 									Commit struct {
 										CommitObject
 										Status StatusObject
+										StatusCheckRollup struct {
+											Contexts struct {
+												Nodes []StatusCheckRollupContextObject
+											} `graphql:"contexts(first:$contextsFirst)"`
+										}
 									}
 								}
 							}
@@ -152,6 +157,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 		"commitsLast":       githubv4.Int(1),
 		"prReviewStates":    []githubv4.PullRequestReviewState{githubv4.PullRequestReviewStateApproved},
 		"labelsFirst":       githubv4.Int(10),
+		"contextsFirst":     githubv4.Int(10),
 	}
 
 	var response []*PullRequest
@@ -190,12 +196,21 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 			}
 
 			for _, c := range p.Node.Commits.Edges {
+				checkRuns := map[string]string{}
+
+				for _, statusCheckRollupContext := range c.Node.Commit.StatusCheckRollup.Contexts.Nodes {
+					if !(CheckRunObject{} == statusCheckRollupContext.CheckRunObject) {
+						checkRuns[statusCheckRollupContext.CheckRunObject.Name] = statusCheckRollupContext.CheckRunObject.Conclusion
+					}
+				}
+
 				response = append(response, &PullRequest{
 					PullRequestObject:   p.Node.PullRequestObject,
 					Tip:                 c.Node.Commit.CommitObject,
 					ApprovedReviewCount: p.Node.Reviews.TotalCount,
 					Labels:              labels,
 					HasStatus:           !(c.Node.Commit.Status.Context.Context == nil),
+					CheckRuns:           checkRuns,
 				})
 			}
 		}

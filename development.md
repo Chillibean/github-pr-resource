@@ -36,7 +36,7 @@ example
         "access_token": "<<place_your_github_pat_here>>",
         "status_context": "concourse-ci/status",
         "states": ["OPEN","MERGED"]
-    } 
+    }
 }
 ```
 
