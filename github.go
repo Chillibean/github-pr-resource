@@ -118,7 +118,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 								Node struct {
 									Commit struct {
 										CommitObject
-										Status StatusObject
+										Status            StatusObject
 										StatusCheckRollup struct {
 											Contexts struct {
 												Nodes []StatusCheckRollupContextObject

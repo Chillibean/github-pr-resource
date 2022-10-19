@@ -11,18 +11,39 @@ import (
 
 var (
 	testPullRequests = []*resource.PullRequest{
-		createTestPR(1, "master", true, false, 0, nil, false, githubv4.PullRequestStateOpen, false),
-		createTestPR(2, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true),
-		createTestPR(3, "master", false, false, 0, nil, true, githubv4.PullRequestStateOpen, false),
-		createTestPR(4, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true),
-		createTestPR(5, "master", false, true, 0, nil, false, githubv4.PullRequestStateOpen, false),
-		createTestPR(6, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, false),
-		createTestPR(7, "develop", false, false, 0, []string{"enhancement"}, false, githubv4.PullRequestStateOpen, true),
-		createTestPR(8, "master", false, false, 1, []string{"wontfix"}, false, githubv4.PullRequestStateOpen, true),
-		createTestPR(9, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, false),
-		createTestPR(10, "master", false, false, 0, nil, false, githubv4.PullRequestStateClosed, false),
-		createTestPR(11, "master", false, false, 0, nil, false, githubv4.PullRequestStateMerged, false),
-		createTestPR(12, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, false),
+		createTestPR(1, "master", true, false, 0, nil, false, githubv4.PullRequestStateOpen, false, nil),
+		createTestPR(2, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, nil),
+		createTestPR(3, "master", false, false, 0, nil, true, githubv4.PullRequestStateOpen, false, nil),
+		createTestPR(4, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, nil),
+		createTestPR(5, "master", false, true, 0, nil, false, githubv4.PullRequestStateOpen, false, nil),
+		createTestPR(6, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, false, nil),
+		createTestPR(7, "develop", false, false, 0, []string{"enhancement"}, false, githubv4.PullRequestStateOpen, true, nil),
+		createTestPR(8, "master", false, false, 1, []string{"wontfix"}, false, githubv4.PullRequestStateOpen, true, nil),
+		createTestPR(9, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, false, nil),
+		createTestPR(10, "master", false, false, 0, nil, false, githubv4.PullRequestStateClosed, false, nil),
+		createTestPR(11, "master", false, false, 0, nil, false, githubv4.PullRequestStateMerged, false, nil),
+		createTestPR(12, "master", false, false, 0, nil, false, githubv4.PullRequestStateOpen, false, nil),
+		createTestPR(13, "branch-1", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, map[string]string{}),
+		createTestPR(14, "branch-2", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, map[string]string{
+			"check-run-1": "SUCCESS",
+		}),
+		createTestPR(15, "branch-3", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, map[string]string{
+			"check-run-2": "SUCCESS",
+			"check-run-3": "SUCCESS",
+		}),
+		createTestPR(16, "branch-4", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, map[string]string{
+			"check-run-4": "SUCCESS",
+			"check-run-5": "FAILURE",
+		}),
+		createTestPR(17, "branch-5", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, map[string]string{
+			"check-run-6": "FAILURE",
+			"check-run-7": "FAILURE",
+		}),
+		createTestPR(18, "branch-6", false, false, 0, nil, false, githubv4.PullRequestStateOpen, true, map[string]string{
+			"check-run-8":  "SUCCESS",
+			"check-run-9":  "SUCCESS",
+			"check-run-10": "FAILURE",
+		}),
 	}
 )
 
@@ -279,6 +300,105 @@ func TestCheck(t *testing.T) {
 				resource.NewVersion(testPullRequests[5]),
 				resource.NewVersion(testPullRequests[4]),
 				resource.NewVersion(testPullRequests[2]),
+			},
+		},
+
+		{
+			description: "check does not ignore pull requests without check runs when required check runs are not provided",
+			source: resource.Source{
+				Repository:  "itsdalmo/test-repository",
+				AccessToken: "oauthtoken",
+				BaseBranch:  "branch-1",
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected: resource.CheckResponse{
+				resource.NewVersion(testPullRequests[12]),
+			},
+		},
+
+		{
+			description: "check correctly ignores pull requests without check runs",
+			source: resource.Source{
+				Repository:        "itsdalmo/test-repository",
+				AccessToken:       "oauthtoken",
+				RequiredCheckRuns: []string{"check-run"},
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected:     resource.CheckResponse(nil),
+		},
+
+		{
+			description: "check does not ignore pull requests with required check run passing",
+			source: resource.Source{
+				Repository:        "itsdalmo/test-repository",
+				AccessToken:       "oauthtoken",
+				RequiredCheckRuns: []string{"check-run-1"},
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected: resource.CheckResponse{
+				resource.NewVersion(testPullRequests[13]),
+			},
+		},
+
+		{
+			description: "check does not ignore pull requests with multiple required check runs passing",
+			source: resource.Source{
+				Repository:        "itsdalmo/test-repository",
+				AccessToken:       "oauthtoken",
+				RequiredCheckRuns: []string{"check-run-2", "check-run-3"},
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected: resource.CheckResponse{
+				resource.NewVersion(testPullRequests[14]),
+			},
+		},
+
+		{
+			description: "check correctly ignores pull requests with required check run failing",
+			source: resource.Source{
+				Repository:        "itsdalmo/test-repository",
+				AccessToken:       "oauthtoken",
+				RequiredCheckRuns: []string{"check-run-5"},
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected:     resource.CheckResponse(nil),
+		},
+
+		{
+			description: "check correctly ignores pull requests with all required check runs failing",
+			source: resource.Source{
+				Repository:        "itsdalmo/test-repository",
+				AccessToken:       "oauthtoken",
+				RequiredCheckRuns: []string{"check-run-6", "check-run-7"},
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected:     resource.CheckResponse(nil),
+		},
+
+		{
+			description: "check does not ignore pull requests with extra check run failing",
+			source: resource.Source{
+				Repository:        "itsdalmo/test-repository",
+				AccessToken:       "oauthtoken",
+				RequiredCheckRuns: []string{"check-run-8", "check-run-9"},
+			},
+			version:      resource.Version{},
+			pullRequests: testPullRequests,
+			files:        [][]string{},
+			expected: resource.CheckResponse{
+				resource.NewVersion(testPullRequests[17]),
 			},
 		},
 	}
