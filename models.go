@@ -189,6 +189,7 @@ type StatusCheckRollupContextObject struct {
 type CheckRunObject struct {
 	Conclusion string
 	Name       string
+	CompletedAt string
 }
 
 // Page represents settings for request parameters

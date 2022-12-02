@@ -168,6 +168,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 	maxPages := p.MaxPRs / p.PageSize
 
 	page := 0
+	layout := "2006-01-02T15:04:05Z"
 
 	for {
 		page++
@@ -197,10 +198,24 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 
 			for _, c := range p.Node.Commits.Edges {
 				checkRuns := map[string]string{}
+				checkTimes := map[string]time.Time{}
 
 				for _, statusCheckRollupContext := range c.Node.Commit.StatusCheckRollup.Contexts.Nodes {
 					if !(CheckRunObject{} == statusCheckRollupContext.CheckRunObject) {
-						checkRuns[statusCheckRollupContext.CheckRunObject.Name] = statusCheckRollupContext.CheckRunObject.Conclusion
+						checkName := statusCheckRollupContext.CheckRunObject.Name
+						checkConclusion := statusCheckRollupContext.CheckRunObject.Conclusion
+						completedAt, _ := time.Parse(layout, statusCheckRollupContext.CheckRunObject.CompletedAt)
+
+						log.Printf("Name: %s, Status: %s", checkName, checkConclusion)
+						log.Printf("Existing time: %s", checkTimes[checkName])
+						log.Printf("New time: %s", completedAt)
+
+						if (checkRuns[checkName] == "" || checkTimes[checkName].Before(completedAt)) {
+							checkRuns[checkName] = checkConclusion
+							checkTimes[checkName] = completedAt
+							
+							log.Printf("Added %s to checkRuns", checkName)
+						}
 					}
 				}
 
