@@ -157,7 +157,7 @@ func (m *GithubClient) ListPullRequests(prStates []githubv4.PullRequestState, p 
 		"commitsLast":       githubv4.Int(1),
 		"prReviewStates":    []githubv4.PullRequestReviewState{githubv4.PullRequestReviewStateApproved},
 		"labelsFirst":       githubv4.Int(10),
-		"contextsFirst":     githubv4.Int(10),
+		"contextsFirst":     githubv4.Int(100),
 	}
 
 	var response []*PullRequest
